@@ -1,0 +1,101 @@
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/assets/fonts/BricolageGrotesque.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/assets/fonts/PlusJakartaSans.woff2") format("woff2");
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* SAHA Business Suite - Clean Green Professional Theme */
+    --background: 97 0.01 120;
+    --foreground: 20 0.02 250;
+    --card: 100 0 0;
+    --card-foreground: 20 0.02 250;
+    --popover: 100 0 0;
+    --popover-foreground: 20 0.02 250;
+
+    --primary: 55 0.18 145;
+    --primary-foreground: 100 0 0;
+
+    --secondary: 93 0.04 145;
+    --secondary-foreground: 30 0.05 145;
+
+    --muted: 95 0.02 145;
+    --muted-foreground: 55 0.04 145;
+
+    --accent: 92 0.06 145;
+    --accent-foreground: 30 0.08 145;
+
+    --destructive: 55 0.22 25;
+    --destructive-foreground: 100 0 0;
+
+    --border: 90 0.03 145;
+    --input: 90 0.03 145;
+    --ring: 55 0.18 145;
+
+    --radius: 0.75rem;
+
+    /* Card accent colors */
+    --card-orange: 88 0.12 55;
+    --card-green: 90 0.1 145;
+    --card-blue: 90 0.08 240;
+    --card-sage: 88 0.09 160;
+
+    --chart-1: 55 0.18 145;
+    --chart-2: 65 0.14 200;
+    --chart-3: 75 0.12 55;
+    --chart-4: 60 0.16 25;
+    --chart-5: 50 0.2 300;
+
+    --sidebar: 100 0 0;
+    --sidebar-foreground: 20 0.02 250;
+    --sidebar-primary: 55 0.18 145;
+    --sidebar-primary-foreground: 100 0 0;
+    --sidebar-accent: 93 0.04 145;
+    --sidebar-accent-foreground: 30 0.05 145;
+    --sidebar-border: 90 0.03 145;
+    --sidebar-ring: 55 0.18 145;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Plus Jakarta Sans", "General Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Stat card backgrounds */
+.card-orange {
+  background: oklch(93% 0.06 55);
+}
+.card-green {
+  background: oklch(93% 0.07 145);
+}
+.card-blue {
+  background: oklch(92% 0.05 240);
+}
+.card-sage {
+  background: oklch(92% 0.06 160);
+}
+
+/* Bottom nav safe area */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
