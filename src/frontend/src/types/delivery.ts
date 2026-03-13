@@ -63,4 +63,5 @@ export interface CompleteDelivery {
   perLoadingLaborAmount?: number;
   perUnloadingLaborAmount?: number;
   safetyBatsAmount?: number;
+  paidMoney?: boolean;
 }

@@ -144,7 +144,8 @@ export default function PendingList({
   }
 
   async function handleDownloadPDF() {
-    const { jsPDF } = await import("jspdf");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const jsPDF = (window as any).jspdf?.jsPDF || (window as any).jsPDF;
     const doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",

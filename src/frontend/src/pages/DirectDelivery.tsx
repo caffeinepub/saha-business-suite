@@ -189,6 +189,7 @@ export default function DirectDelivery({
   const [loadingLabors, setLoadingLabors] = useState<string[]>([]);
   const [unloadingLabors, setUnloadingLabors] = useState<string[]>([]);
   const [error, setError] = useState("");
+  const [paidMoney, setPaidMoney] = useState(false);
 
   const batsSelected = "Bats" in selectedBricks;
   const conversionInput = Number(rates.batsConversionInput) || 100;
@@ -303,6 +304,7 @@ export default function DirectDelivery({
       perLoadingLaborAmount: perLoadingLaborAmount || undefined,
       perUnloadingLaborAmount: perUnloadingLaborAmount || undefined,
       safetyBatsAmount: safetyBatsAmount || undefined,
+      paidMoney: paidMoney || undefined,
     };
 
     onSave(delivery);
@@ -344,7 +346,7 @@ export default function DirectDelivery({
       </header>
 
       {/* Form */}
-      <main className="flex-1 px-4 py-5 pb-36 space-y-6">
+      <main className="flex-1 px-4 py-5 pb-44 space-y-6">
         {/* Basic Info */}
         <section>
           <p
@@ -947,6 +949,50 @@ export default function DirectDelivery({
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Payment Status */}
+        <div className="px-4 pb-2">
+          <p
+            className="text-xs font-bold mb-2"
+            style={{ color: "oklch(42% 0.08 145)" }}
+          >
+            Payment Status
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              data-ocid="direct-delivery.not-paid.toggle"
+              onClick={() => setPaidMoney(false)}
+              className="flex-1 py-3 rounded-xl text-sm font-bold transition-all"
+              style={{
+                background: !paidMoney ? "oklch(92% 0.04 145)" : "white",
+                color: !paidMoney
+                  ? "oklch(32% 0.08 145)"
+                  : "oklch(60% 0.04 145)",
+                border: !paidMoney
+                  ? "2px solid oklch(75% 0.08 145)"
+                  : "2px solid oklch(88% 0.04 145)",
+              }}
+            >
+              Not Paid
+            </button>
+            <button
+              type="button"
+              data-ocid="direct-delivery.paid-money.toggle"
+              onClick={() => setPaidMoney(true)}
+              className="flex-1 py-3 rounded-xl text-sm font-bold transition-all"
+              style={{
+                background: paidMoney ? "oklch(48% 0.18 145)" : "white",
+                color: paidMoney ? "white" : "oklch(60% 0.04 145)",
+                border: paidMoney
+                  ? "2px solid oklch(48% 0.18 145)"
+                  : "2px solid oklch(88% 0.04 145)",
+              }}
+            >
+              ✓ Paid Money
+            </button>
+          </div>
+        </div>
       </main>
 
       {/* Save Button */}

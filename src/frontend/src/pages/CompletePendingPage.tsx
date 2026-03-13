@@ -33,6 +33,7 @@ export default function CompletePendingPage({
   const [unloadingLabors, setUnloadingLabors] = useState<string[]>([]);
   const [loadingInput, setLoadingInput] = useState("");
   const [unloadingInput, setUnloadingInput] = useState("");
+  const [paidMoney, setPaidMoney] = useState(false);
 
   const filteredVehicles = vehicles.filter(
     (v) => v.vehicleType === selectedType,
@@ -125,6 +126,7 @@ export default function CompletePendingPage({
       perLoadingLaborAmount: perLoadingLaborAmount || undefined,
       perUnloadingLaborAmount: perUnloadingLaborAmount || undefined,
       safetyBatsAmount: safetyBatsAmount || undefined,
+      paidMoney: paidMoney || undefined,
     };
     onComplete(completed);
   }
@@ -207,7 +209,7 @@ export default function CompletePendingPage({
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-5 pb-32 space-y-5">
+      <main className="flex-1 px-4 py-5 pb-44 space-y-5">
         {/* Customer Info Card */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -632,6 +634,49 @@ export default function CompletePendingPage({
             </div>
           </motion.div>
         )}
+        {/* Payment Status */}
+        <div className="px-4 pb-2">
+          <p
+            className="text-xs font-bold mb-2"
+            style={{ color: "oklch(42% 0.08 145)" }}
+          >
+            Payment Status
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              data-ocid="complete-pending.not-paid.toggle"
+              onClick={() => setPaidMoney(false)}
+              className="flex-1 py-3 rounded-xl text-sm font-bold transition-all"
+              style={{
+                background: !paidMoney ? "oklch(92% 0.04 145)" : "white",
+                color: !paidMoney
+                  ? "oklch(32% 0.08 145)"
+                  : "oklch(60% 0.04 145)",
+                border: !paidMoney
+                  ? "2px solid oklch(75% 0.08 145)"
+                  : "2px solid oklch(88% 0.04 145)",
+              }}
+            >
+              Not Paid
+            </button>
+            <button
+              type="button"
+              data-ocid="complete-pending.paid-money.toggle"
+              onClick={() => setPaidMoney(true)}
+              className="flex-1 py-3 rounded-xl text-sm font-bold transition-all"
+              style={{
+                background: paidMoney ? "oklch(48% 0.18 145)" : "white",
+                color: paidMoney ? "white" : "oklch(60% 0.04 145)",
+                border: paidMoney
+                  ? "2px solid oklch(48% 0.18 145)"
+                  : "2px solid oklch(88% 0.04 145)",
+              }}
+            >
+              ✓ Paid Money
+            </button>
+          </div>
+        </div>
       </main>
 
       {/* Save Button */}

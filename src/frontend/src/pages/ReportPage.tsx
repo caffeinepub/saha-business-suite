@@ -133,12 +133,18 @@ export default function ReportPage({
     return true;
   });
 
+  // Filter out paidMoney deliveries for labor calculations
+  const weeklyLaborDeliveries = weeklyCompleteDeliveries.filter(
+    (d) => !d.paidMoney,
+  );
+  const dailyLaborDeliveries = dailyDeliveries.filter((d) => !d.paidMoney);
+
   // ── Weekly labor table data ──
   // Collect all unique labor names across filtered weekly deliveries
   const weeklyLaborNames = (() => {
     const seen = new Set<string>();
     const names: string[] = [];
-    for (const d of weeklyCompleteDeliveries) {
+    for (const d of weeklyLaborDeliveries) {
       for (const { name } of buildMergedLabors(d)) {
         if (!seen.has(name)) {
           seen.add(name);
@@ -152,7 +158,7 @@ export default function ReportPage({
   // Group weekly deliveries by date
   const weeklyByDate = (() => {
     const map = new Map<string, CompleteDelivery[]>();
-    for (const d of weeklyCompleteDeliveries) {
+    for (const d of weeklyLaborDeliveries) {
       if (!map.has(d.date)) map.set(d.date, []);
       map.get(d.date)!.push(d);
     }
@@ -203,7 +209,7 @@ export default function ReportPage({
               ? `To: ${formatDisplayDate(dailyTo)}`
               : "All Deliveries";
 
-    const grouped = groupByVehicle(dailyDeliveries);
+    const grouped = groupByVehicle(dailyLaborDeliveries);
     let tablesHtml = "";
 
     for (const [vehicleNumber, group] of grouped) {
@@ -378,7 +384,8 @@ export default function ReportPage({
   }
 
   async function handleDownloadDailyPDF() {
-    const { jsPDF } = await import("jspdf");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const jsPDF = (window as any).jspdf?.jsPDF || (window as any).jsPDF;
     const doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",
@@ -490,7 +497,8 @@ export default function ReportPage({
   }
 
   async function handleDownloadWeeklyPDF() {
-    const { jsPDF } = await import("jspdf");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const jsPDF = (window as any).jspdf?.jsPDF || (window as any).jsPDF;
     const doc = new jsPDF({
       orientation: "portrait",
       unit: "mm",
@@ -524,7 +532,7 @@ export default function ReportPage({
     // Build same data as screen
     const allLaborNames = [
       ...new Set(
-        weeklyCompleteDeliveries.flatMap((d) => {
+        weeklyLaborDeliveries.flatMap((d) => {
           const m = new Map();
           for (const n of d.loadingLaborNames) m.set(n, true);
           for (const n of d.unloadingLaborNames) m.set(n, true);
@@ -579,7 +587,7 @@ export default function ReportPage({
   }
 
   // Group daily deliveries by vehicle
-  const vehicleGroups = groupByVehicle(dailyDeliveries);
+  const vehicleGroups = groupByVehicle(dailyLaborDeliveries);
 
   return (
     <div
