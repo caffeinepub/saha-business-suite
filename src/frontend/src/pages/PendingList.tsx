@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2,
   ChevronLeft,
+  Download,
   Layers,
   MapPin,
   PackageX,
@@ -38,6 +39,41 @@ export default function PendingList({
 }: Props) {
   const [completingDelivery, setCompletingDelivery] =
     useState<PendingDelivery | null>(null);
+
+  function handleDownloadPDF() {
+    const rows = deliveries
+      .map(
+        (d) => `
+        <div style="background:#fff;border:1.5px solid #ffe0b2;border-radius:12px;padding:14px;margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <strong style="font-size:14px;color:#e65100">${d.customerName}</strong>
+            <span style="background:#fff3e0;color:#e65100;font-weight:700;padding:3px 10px;border-radius:20px;font-size:12px">${d.locationType}</span>
+          </div>
+          <div style="font-size:11px;color:#888;margin-bottom:4px">${d.date}</div>
+          <div style="font-size:11px;color:#666;margin-bottom:4px">${d.address}</div>
+          <div style="font-size:12px;color:#555;margin-bottom:4px">ইট: <strong>${d.totalBricks}</strong></div>
+          ${d.dueAmount !== undefined ? `<div style="font-size:12px;color:#e65100;font-weight:700">বকেয়া: ৳${d.dueAmount.toLocaleString()}</div>` : ""}
+        </div>`,
+      )
+      .join("");
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>SAHA Pending List</title>
+      <style>body{font-family:sans-serif;margin:20px;color:#222}@media print{body{margin:0}}</style>
+      </head><body>
+      <h2 style="color:#e65100;margin-bottom:4px">SAHA - Pending Delivery List</h2>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">মোট পেন্ডিং: ${deliveries.length} টি</p>
+      ${rows || "<p style='color:#aaa'>কোনো পেন্ডিং ডেলিভারি নেই</p>"}
+      <p style="color:#aaa;font-size:11px;text-align:center;margin-top:24px">SAHA Business Suite</p>
+      </body></html>`;
+
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "saha-pending-list.pdf";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   if (completingDelivery) {
     return (
@@ -87,6 +123,16 @@ export default function PendingList({
             {deliveries.length} টি পেন্ডিং ডেলিভারি
           </p>
         </div>
+        <button
+          type="button"
+          data-ocid="pending-list.primary_button"
+          onClick={handleDownloadPDF}
+          className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-colors"
+          style={{ background: "oklch(48% 0.18 145)", color: "white" }}
+        >
+          <Download size={14} />
+          PDF
+        </button>
         <Badge
           className="rounded-full text-xs font-bold px-3 py-1"
           style={{

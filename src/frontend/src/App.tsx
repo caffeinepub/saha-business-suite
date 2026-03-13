@@ -16,6 +16,7 @@ import {
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
+import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useUserProfile } from "./hooks/useQueries";
 import AddPendingDelivery from "./pages/AddPendingDelivery";
 import CompleteList from "./pages/CompleteList";
@@ -108,14 +109,20 @@ export default function App() {
   const { data: profile, isLoading: profileLoading } = useUserProfile();
   const [activeTab, setActiveTab] = useState<NavTab>("home");
   const [subView, setSubView] = useState<SubView>(null);
-  const [pendingDeliveries, setPendingDeliveries] = useState<PendingDelivery[]>(
+  const [pendingDeliveries, setPendingDeliveries] = useLocalStorage<
+    PendingDelivery[]
+  >("saha_pending", []);
+  const [completeDeliveries, setCompleteDeliveries] = useLocalStorage<
+    CompleteDelivery[]
+  >("saha_complete", []);
+  const [vehicles, setVehicles] = useLocalStorage<VehicleConfig[]>(
+    "saha_vehicles",
     [],
   );
-  const [completeDeliveries, setCompleteDeliveries] = useState<
-    CompleteDelivery[]
-  >([]);
-  const [vehicles, setVehicles] = useState<VehicleConfig[]>([]);
-  const [rates, setRates] = useState<RatesConfig>(DEFAULT_RATES);
+  const [rates, setRates] = useLocalStorage<RatesConfig>(
+    "saha_rates",
+    DEFAULT_RATES,
+  );
 
   const isLoggedIn = !!identity;
   const isLoggingIn = loginStatus === "logging-in";
@@ -132,6 +139,12 @@ export default function App() {
         .toUpperCase()
         .slice(0, 2)
     : "?";
+
+  // Total Revenue from completed deliveries
+  const totalRevenue = completeDeliveries.reduce(
+    (sum, d) => sum + (d.totalAmount ?? 0),
+    0,
+  );
 
   function handleSavePending(delivery: PendingDelivery) {
     setPendingDeliveries((prev) => [...prev, delivery]);
@@ -454,10 +467,12 @@ export default function App() {
                 </div>
               </div>
               <p
-                className="text-[32px] font-extrabold leading-none font-display"
+                className="text-[26px] font-extrabold leading-none font-display"
                 style={{ color: "oklch(28% 0.06 160)" }}
               >
-                —
+                {totalRevenue > 0
+                  ? `₹${Math.round(totalRevenue).toLocaleString()}`
+                  : "—"}
               </p>
               <p
                 className="text-[10px] font-bold uppercase tracking-wide mt-1"

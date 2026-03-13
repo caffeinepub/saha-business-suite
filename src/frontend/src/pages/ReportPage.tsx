@@ -2,12 +2,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   BarChart3,
   Calendar,
-  CheckCircle2,
   ChevronLeft,
   Download,
-  IndianRupee,
-  Layers,
-  Package,
   PackageX,
   Truck,
   Users,
@@ -40,11 +36,6 @@ function getWeekRange(): { start: string; end: string } {
   const fmt = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   return { start: fmt(mon), end: fmt(sun) };
-}
-
-function inWeek(dateStr: string): boolean {
-  const { start, end } = getWeekRange();
-  return dateStr >= start && dateStr <= end;
 }
 
 type MergedLabor = { name: string; amount: number };
@@ -120,6 +111,8 @@ export default function ReportPage({
   const [dailyTo, setDailyTo] = useState(today);
 
   const week = getWeekRange();
+  const [weeklyFrom, setWeeklyFrom] = useState(week.start);
+  const [weeklyTo, setWeeklyTo] = useState(week.end);
 
   const dailyDeliveries = completeDeliveries.filter((d) => {
     if (dailyFrom && d.date < dailyFrom) return false;
@@ -127,34 +120,76 @@ export default function ReportPage({
     return true;
   });
 
-  const weeklyCompleteDeliveries = completeDeliveries.filter((d) =>
-    inWeek(d.date),
-  );
-  const weeklyPendingDeliveries = pendingDeliveries.filter((d) =>
-    inWeek(d.date),
-  );
+  const weeklyCompleteDeliveries = completeDeliveries.filter((d) => {
+    if (weeklyFrom && d.date < weeklyFrom) return false;
+    if (weeklyTo && d.date > weeklyTo) return false;
+    return true;
+  });
 
-  const weeklyTotalBricks =
-    weeklyPendingDeliveries.reduce((s, d) => s + d.totalBricks, 0) +
-    weeklyCompleteDeliveries.reduce((s, d) => s + d.totalBricks, 0);
+  const _weeklyPendingDeliveries = pendingDeliveries.filter((d) => {
+    if (weeklyFrom && d.date < weeklyFrom) return false;
+    if (weeklyTo && d.date > weeklyTo) return false;
+    return true;
+  });
 
-  const weeklyTotalAmount = weeklyCompleteDeliveries.reduce(
-    (s, d) => s + (d.totalAmount ?? 0),
+  // ── Weekly labor table data ──
+  // Collect all unique labor names across filtered weekly deliveries
+  const weeklyLaborNames = (() => {
+    const seen = new Set<string>();
+    const names: string[] = [];
+    for (const d of weeklyCompleteDeliveries) {
+      for (const { name } of buildMergedLabors(d)) {
+        if (!seen.has(name)) {
+          seen.add(name);
+          names.push(name);
+        }
+      }
+    }
+    return names;
+  })();
+
+  // Group weekly deliveries by date
+  const weeklyByDate = (() => {
+    const map = new Map<string, CompleteDelivery[]>();
+    for (const d of weeklyCompleteDeliveries) {
+      if (!map.has(d.date)) map.set(d.date, []);
+      map.get(d.date)!.push(d);
+    }
+    return map;
+  })();
+
+  // Sorted date keys
+  const weeklyDateKeys = Array.from(weeklyByDate.keys()).sort();
+
+  // For each date row: sum each labor's earnings
+  const weeklyDateRows = weeklyDateKeys.map((date) => {
+    const delivs = weeklyByDate.get(date) ?? [];
+    const laborAmts: Record<string, number> = {};
+    for (const name of weeklyLaborNames) laborAmts[name] = 0;
+    for (const d of delivs) {
+      for (const { name, amount } of buildMergedLabors(d)) {
+        if (laborAmts[name] !== undefined) laborAmts[name] += amount;
+        else laborAmts[name] = amount;
+      }
+    }
+    const rowTotal = Object.values(laborAmts).reduce((s, v) => s + v, 0);
+    return { date, laborAmts, rowTotal };
+  });
+
+  // Column totals
+  const weeklyColTotals: Record<string, number> = {};
+  for (const name of weeklyLaborNames) weeklyColTotals[name] = 0;
+  for (const row of weeklyDateRows) {
+    for (const name of weeklyLaborNames) {
+      weeklyColTotals[name] += row.laborAmts[name] ?? 0;
+    }
+  }
+  const weeklyGrandTotal = Object.values(weeklyColTotals).reduce(
+    (s, v) => s + v,
     0,
   );
 
-  const weeklyAggregatedLabors = (() => {
-    const map = new Map<string, number>();
-    for (const d of weeklyCompleteDeliveries) {
-      for (const { name, amount } of buildMergedLabors(d)) {
-        map.set(name, (map.get(name) ?? 0) + amount);
-      }
-    }
-    return Array.from(map.entries())
-      .map(([name, amount]) => ({ name, amount }))
-      .sort((a, b) => b.amount - a.amount);
-  })();
-
+  // ── PDF Handlers ──
   function handleDownloadDailyPDF() {
     const periodLabel =
       dailyFrom === dailyTo
@@ -276,8 +311,70 @@ export default function ReportPage({
     URL.revokeObjectURL(url);
   }
 
-  const weeklyHasData =
-    weeklyPendingDeliveries.length > 0 || weeklyCompleteDeliveries.length > 0;
+  function handleDownloadWeeklyPDF() {
+    const periodLabel =
+      weeklyFrom && weeklyTo
+        ? `${formatDisplayDate(weeklyFrom)} – ${formatDisplayDate(weeklyTo)}`
+        : weeklyFrom
+          ? `From: ${formatDisplayDate(weeklyFrom)}`
+          : weeklyTo
+            ? `To: ${formatDisplayDate(weeklyTo)}`
+            : "All Deliveries";
+
+    const headerCols = [
+      '<th style="background:#2e7d32;color:#fff;padding:8px 12px;text-align:left;white-space:nowrap">Date</th>',
+      ...weeklyLaborNames.map(
+        (n) =>
+          `<th style="background:#2e7d32;color:#fff;padding:8px 12px;text-align:right;white-space:nowrap">${n}</th>`,
+      ),
+      '<th style="background:#1b5e20;color:#fff;padding:8px 12px;text-align:right;white-space:nowrap">Total</th>',
+    ].join("");
+
+    const dataRows = weeklyDateRows
+      .map(
+        (row, ri) =>
+          `<tr>
+        <td style="padding:7px 12px;background:${ri % 2 === 0 ? "#fff" : "#f1f8f1"};white-space:nowrap">${formatDisplayDate(row.date)}</td>
+        ${weeklyLaborNames.map((n) => `<td style="padding:7px 12px;text-align:right;background:${ri % 2 === 0 ? "#fff" : "#f1f8f1"}">${(row.laborAmts[n] ?? 0) > 0 ? `₹${(row.laborAmts[n] ?? 0).toFixed(2)}` : "—"}</td>`).join("")}
+        <td style="padding:7px 12px;text-align:right;font-weight:700;background:${ri % 2 === 0 ? "#fff" : "#f1f8f1"}">${row.rowTotal > 0 ? `₹${row.rowTotal.toFixed(2)}` : "—"}</td>
+      </tr>`,
+      )
+      .join("");
+
+    const totalsRow = `<tr style="background:#e8f5e9;border-top:2px solid #2e7d32">
+      <td style="padding:9px 12px;font-weight:800;color:#1b5e20">Total</td>
+      ${weeklyLaborNames.map((n) => `<td style="padding:9px 12px;text-align:right;font-weight:800;color:#2e7d32">${weeklyColTotals[n] > 0 ? `₹${weeklyColTotals[n].toFixed(2)}` : "—"}</td>`).join("")}
+      <td style="padding:9px 12px;text-align:right;font-weight:800;color:#1b5e20">${weeklyGrandTotal > 0 ? `₹${weeklyGrandTotal.toFixed(2)}` : "—"}</td>
+    </tr>`;
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>SAHA Weekly Labor Report</title>
+      <style>body{font-family:sans-serif;margin:20px;color:#222}table{border-collapse:collapse;width:100%;font-size:12px}</style>
+      </head><body>
+      <h2 style="color:#1b5e20;margin-bottom:4px">SAHA – Weekly Labor Report</h2>
+      <p style="color:#555;font-size:13px;margin-bottom:16px">${periodLabel} &nbsp;|&nbsp; ${weeklyDateRows.length} days &nbsp;|&nbsp; ${weeklyCompleteDeliveries.length} deliveries</p>
+      <div style="overflow-x:auto;background:#fff;border:1.5px solid #c8e6c9;border-radius:12px;overflow:hidden">
+        <table>
+          <thead><tr>${headerCols}</tr></thead>
+          <tbody>${dataRows}${totalsRow}</tbody>
+        </table>
+      </div>
+      <div style="background:#2e7d32;color:#fff;padding:12px 20px;border-radius:10px;margin-top:16px;display:flex;justify-content:space-between;font-size:15px;font-weight:800">
+        <span>Grand Total (Labor)</span>
+        <span>${weeklyGrandTotal > 0 ? `₹${weeklyGrandTotal.toFixed(2)}` : "—"}</span>
+      </div>
+      <p style="color:#aaa;font-size:11px;text-align:center;margin-top:24px">SAHA Business Suite</p>
+      </body></html>`;
+
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "saha-weekly-labor-report.pdf";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 
   // Group daily deliveries by vehicle
   const vehicleGroups = groupByVehicle(dailyDeliveries);
@@ -319,9 +416,7 @@ export default function ReportPage({
               className="text-[10px] font-medium leading-tight"
               style={{ color: "oklch(58% 0.08 145)" }}
             >
-              {period === "daily"
-                ? "Daily Report"
-                : `${week.start} – ${week.end}`}
+              {period === "daily" ? "Daily Report" : "Weekly Labor Account"}
             </p>
           </div>
         </div>
@@ -332,6 +427,18 @@ export default function ReportPage({
             onClick={handleDownloadDailyPDF}
             className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-colors"
             style={{ background: "oklch(48% 0.18 145)", color: "white" }}
+          >
+            <Download size={14} />
+            PDF
+          </button>
+        )}
+        {period === "weekly" && (
+          <button
+            type="button"
+            data-ocid="report.weekly.primary_button"
+            onClick={handleDownloadWeeklyPDF}
+            className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-colors"
+            style={{ background: "oklch(38% 0.16 145)", color: "white" }}
           >
             <Download size={14} />
             PDF
@@ -741,235 +848,331 @@ export default function ReportPage({
 
       {/* ── WEEKLY TAB ── */}
       {period === "weekly" && (
-        <main className="flex-1 px-4 py-5 pb-20 space-y-5">
-          {!weeklyHasData ? (
-            <motion.div
-              data-ocid="report.weekly.empty_state"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center justify-center py-20 gap-4"
-            >
-              <div
-                className="h-20 w-20 rounded-3xl flex items-center justify-center"
-                style={{ background: "oklch(92% 0.07 145)" }}
-              >
-                <PackageX size={36} style={{ color: "oklch(55% 0.14 145)" }} />
-              </div>
-              <div className="text-center">
-                <p
-                  className="text-base font-bold"
-                  style={{ color: "oklch(38% 0.08 145)" }}
-                >
-                  এই সপ্তাহে কোনো ডেলিভারি নেই
-                </p>
-                <p
-                  className="text-xs mt-1"
-                  style={{ color: "oklch(62% 0.06 145)" }}
-                >
-                  No deliveries found for this week
-                </p>
-              </div>
-            </motion.div>
-          ) : (
-            <>
-              {/* Summary Cards */}
-              <div>
-                <p
-                  className="text-[10px] font-extrabold uppercase tracking-widest mb-3 px-0.5"
-                  style={{ color: "oklch(55% 0.1 145)" }}
-                >
-                  Summary
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <motion.div
-                    data-ocid="report.weekly.card"
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.05 }}
-                    className="rounded-2xl p-4 shadow-sm"
-                    style={{
-                      background: "oklch(96% 0.08 55)",
-                      border: "1.5px solid oklch(88% 0.1 55)",
-                    }}
+        <>
+          {/* Weekly Date Range Filter */}
+          <div
+            className="px-4 py-3 bg-white"
+            style={{ borderBottom: "1px solid oklch(92% 0.04 145)" }}
+          >
+            <div className="flex gap-3 items-center">
+              <div className="flex-1">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Calendar
+                    size={11}
+                    style={{ color: "oklch(45% 0.14 145)" }}
+                  />
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-wide"
+                    style={{ color: "oklch(45% 0.14 145)" }}
                   >
-                    <div
-                      className="h-8 w-8 rounded-xl flex items-center justify-center mb-3"
-                      style={{ background: "oklch(80% 0.12 55)" }}
-                    >
-                      <Package
-                        size={16}
-                        style={{ color: "oklch(40% 0.18 55)" }}
-                      />
-                    </div>
-                    <p
-                      className="text-[28px] font-extrabold leading-none font-display"
-                      style={{ color: "oklch(28% 0.06 55)" }}
-                    >
-                      {weeklyPendingDeliveries.length || "—"}
-                    </p>
-                    <p
-                      className="text-[9px] font-bold uppercase tracking-wide mt-1"
-                      style={{ color: "oklch(42% 0.12 55)" }}
-                    >
-                      PENDING
-                    </p>
-                  </motion.div>
-
-                  <motion.div
-                    data-ocid="report.weekly.card"
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="rounded-2xl p-4 shadow-sm"
-                    style={{
-                      background: "oklch(95% 0.08 145)",
-                      border: "1.5px solid oklch(86% 0.1 145)",
-                    }}
-                  >
-                    <div
-                      className="h-8 w-8 rounded-full flex items-center justify-center mb-3"
-                      style={{ background: "oklch(58% 0.18 145)" }}
-                    >
-                      <CheckCircle2 size={16} className="text-white" />
-                    </div>
-                    <p
-                      className="text-[28px] font-extrabold leading-none font-display"
-                      style={{ color: "oklch(28% 0.06 145)" }}
-                    >
-                      {weeklyCompleteDeliveries.length || "—"}
-                    </p>
-                    <p
-                      className="text-[9px] font-bold uppercase tracking-wide mt-1"
-                      style={{ color: "oklch(40% 0.12 145)" }}
-                    >
-                      COMPLETED
-                    </p>
-                  </motion.div>
-
-                  <motion.div
-                    data-ocid="report.weekly.card"
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.15 }}
-                    className="rounded-2xl p-4 shadow-sm"
-                    style={{
-                      background: "oklch(94% 0.07 240)",
-                      border: "1.5px solid oklch(85% 0.09 240)",
-                    }}
-                  >
-                    <div
-                      className="h-8 w-8 rounded-xl flex items-center justify-center mb-3"
-                      style={{ background: "oklch(76% 0.12 240)" }}
-                    >
-                      <Layers
-                        size={16}
-                        style={{ color: "oklch(38% 0.16 240)" }}
-                      />
-                    </div>
-                    <p
-                      className="text-[24px] font-extrabold leading-none font-display"
-                      style={{ color: "oklch(28% 0.06 240)" }}
-                    >
-                      {weeklyTotalBricks > 0
-                        ? weeklyTotalBricks.toLocaleString()
-                        : "—"}
-                    </p>
-                    <p
-                      className="text-[9px] font-bold uppercase tracking-wide mt-1"
-                      style={{ color: "oklch(40% 0.12 240)" }}
-                    >
-                      TOTAL BRICKS
-                    </p>
-                  </motion.div>
-
-                  <motion.div
-                    data-ocid="report.weekly.card"
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="rounded-2xl p-4 shadow-sm"
-                    style={{
-                      background: "oklch(95% 0.08 160)",
-                      border: "1.5px solid oklch(85% 0.09 160)",
-                    }}
-                  >
-                    <div
-                      className="h-8 w-8 rounded-full flex items-center justify-center mb-3"
-                      style={{ background: "oklch(40% 0.14 160)" }}
-                    >
-                      <IndianRupee size={16} className="text-white" />
-                    </div>
-                    <p
-                      className="text-[22px] font-extrabold leading-none font-display"
-                      style={{ color: "oklch(28% 0.06 160)" }}
-                    >
-                      {weeklyTotalAmount > 0
-                        ? `৳${Math.round(weeklyTotalAmount).toLocaleString()}`
-                        : "—"}
-                    </p>
-                    <p
-                      className="text-[9px] font-bold uppercase tracking-wide mt-1"
-                      style={{ color: "oklch(40% 0.12 160)" }}
-                    >
-                      TOTAL AMOUNT
-                    </p>
-                  </motion.div>
+                    From
+                  </span>
                 </div>
+                <input
+                  type="date"
+                  data-ocid="report.weekly.from_input"
+                  value={weeklyFrom}
+                  onChange={(e) => setWeeklyFrom(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "oklch(96% 0.03 145)",
+                    border: "1.5px solid oklch(85% 0.07 145)",
+                    color: "oklch(28% 0.06 145)",
+                  }}
+                />
               </div>
+              <div
+                className="w-4 h-[1.5px] rounded flex-shrink-0 mt-4"
+                style={{ background: "oklch(75% 0.08 145)" }}
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Calendar
+                    size={11}
+                    style={{ color: "oklch(45% 0.14 145)" }}
+                  />
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-wide"
+                    style={{ color: "oklch(45% 0.14 145)" }}
+                  >
+                    To
+                  </span>
+                </div>
+                <input
+                  type="date"
+                  data-ocid="report.weekly.to_input"
+                  value={weeklyTo}
+                  onChange={(e) => setWeeklyTo(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "oklch(96% 0.03 145)",
+                    border: "1.5px solid oklch(85% 0.07 145)",
+                    color: "oklch(28% 0.06 145)",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
 
-              {/* Labor Payment Summary */}
-              {weeklyAggregatedLabors.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25 }}
+          <main className="flex-1 px-4 py-5 pb-20">
+            {weeklyCompleteDeliveries.length === 0 ? (
+              <motion.div
+                data-ocid="report.weekly.empty_state"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex flex-col items-center justify-center py-20 gap-4"
+              >
+                <div
+                  className="h-20 w-20 rounded-3xl flex items-center justify-center"
+                  style={{ background: "oklch(92% 0.07 145)" }}
                 >
-                  <div className="flex items-center gap-2 mb-3">
-                    <Users size={13} style={{ color: "oklch(48% 0.14 145)" }} />
-                    <p
-                      className="text-[10px] font-extrabold uppercase tracking-widest"
-                      style={{ color: "oklch(48% 0.14 145)" }}
+                  <PackageX
+                    size={36}
+                    style={{ color: "oklch(55% 0.14 145)" }}
+                  />
+                </div>
+                <div className="text-center">
+                  <p
+                    className="text-base font-bold"
+                    style={{ color: "oklch(38% 0.08 145)" }}
+                  >
+                    এই সময়ে কোনো ডেলিভারি নেই
+                  </p>
+                  <p
+                    className="text-xs mt-1"
+                    style={{ color: "oklch(62% 0.06 145)" }}
+                  >
+                    No deliveries found for this date range
+                  </p>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-4"
+              >
+                {/* Section Title */}
+                <div className="flex items-center gap-2">
+                  <Users size={14} style={{ color: "oklch(38% 0.16 145)" }} />
+                  <p
+                    className="text-[11px] font-extrabold uppercase tracking-widest"
+                    style={{ color: "oklch(38% 0.16 145)" }}
+                  >
+                    Labor Account (তারিখ ভিত্তিক)
+                  </p>
+                </div>
+
+                {/* Scrollable Table Card */}
+                <div
+                  className="rounded-2xl bg-white shadow-sm overflow-hidden"
+                  style={{ border: "1.5px solid oklch(82% 0.1 145)" }}
+                >
+                  <div className="overflow-x-auto">
+                    <table
+                      data-ocid="report.weekly.table"
+                      className="text-xs border-collapse"
+                      style={{ minWidth: "100%" }}
                     >
-                      Labor Payment Summary
+                      {/* Header */}
+                      <thead>
+                        <tr>
+                          <th
+                            className="px-3 py-3 text-left font-bold text-white whitespace-nowrap sticky left-0 z-10"
+                            style={{ background: "oklch(35% 0.1 145)" }}
+                          >
+                            তারিখ
+                          </th>
+                          {weeklyLaborNames.map((name) => (
+                            <th
+                              key={name}
+                              className="px-3 py-3 text-right font-bold text-white whitespace-nowrap"
+                              style={{ background: "oklch(35% 0.1 145)" }}
+                            >
+                              {name}
+                            </th>
+                          ))}
+                          <th
+                            className="px-3 py-3 text-right font-bold text-white whitespace-nowrap"
+                            style={{ background: "oklch(28% 0.08 145)" }}
+                          >
+                            মোট
+                          </th>
+                        </tr>
+                      </thead>
+
+                      {/* Data Rows */}
+                      <tbody>
+                        {weeklyDateRows.map((row, ri) => (
+                          <tr
+                            key={row.date}
+                            style={{
+                              background: ri % 2 === 0 ? "#ffffff" : "#f1f8f1",
+                            }}
+                          >
+                            <td
+                              className="px-3 py-2.5 font-semibold whitespace-nowrap sticky left-0"
+                              style={{
+                                background:
+                                  ri % 2 === 0 ? "#f8fdf8" : "#ecf7ec",
+                                color: "oklch(28% 0.1 145)",
+                                borderRight: "1.5px solid oklch(88% 0.06 145)",
+                              }}
+                            >
+                              {formatDisplayDate(row.date)}
+                            </td>
+                            {weeklyLaborNames.map((name) => {
+                              const amt = row.laborAmts[name] ?? 0;
+                              return (
+                                <td
+                                  key={name}
+                                  className="px-3 py-2.5 text-right"
+                                  style={{
+                                    color:
+                                      amt > 0
+                                        ? "oklch(30% 0.18 145)"
+                                        : "oklch(70% 0.04 145)",
+                                  }}
+                                >
+                                  {amt > 0 ? `₹${amt.toFixed(2)}` : "—"}
+                                </td>
+                              );
+                            })}
+                            <td
+                              className="px-3 py-2.5 text-right font-bold"
+                              style={{ color: "oklch(25% 0.12 145)" }}
+                            >
+                              {row.rowTotal > 0
+                                ? `₹${row.rowTotal.toFixed(2)}`
+                                : "—"}
+                            </td>
+                          </tr>
+                        ))}
+
+                        {/* Totals Row */}
+                        <tr
+                          style={{
+                            background: "oklch(90% 0.09 145)",
+                            borderTop: "2px solid oklch(65% 0.14 145)",
+                          }}
+                        >
+                          <td
+                            className="px-3 py-3 font-extrabold sticky left-0"
+                            style={{
+                              background: "oklch(88% 0.1 145)",
+                              color: "oklch(22% 0.1 145)",
+                              borderRight: "1.5px solid oklch(75% 0.1 145)",
+                            }}
+                          >
+                            মোট
+                          </td>
+                          {weeklyLaborNames.map((name) => (
+                            <td
+                              key={name}
+                              className="px-3 py-3 text-right font-extrabold"
+                              style={{ color: "oklch(28% 0.14 145)" }}
+                            >
+                              {weeklyColTotals[name] > 0
+                                ? `₹${weeklyColTotals[name].toFixed(2)}`
+                                : "—"}
+                            </td>
+                          ))}
+                          <td
+                            className="px-3 py-3 text-right font-extrabold"
+                            style={{ color: "oklch(22% 0.1 145)" }}
+                          >
+                            {weeklyGrandTotal > 0
+                              ? `₹${weeklyGrandTotal.toFixed(2)}`
+                              : "—"}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Grand Total Banner */}
+                  <div
+                    className="flex items-center justify-between px-4 py-3"
+                    style={{ background: "oklch(35% 0.1 145)" }}
+                  >
+                    <span className="text-sm font-extrabold text-white">
+                      Grand Total (Labor)
+                    </span>
+                    <span className="text-lg font-extrabold text-white">
+                      {weeklyGrandTotal > 0
+                        ? `₹${weeklyGrandTotal.toFixed(2)}`
+                        : "—"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Stat strip */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div
+                    className="rounded-xl p-3 text-center"
+                    style={{
+                      background: "white",
+                      border: "1.5px solid oklch(88% 0.07 145)",
+                    }}
+                  >
+                    <p
+                      className="text-lg font-extrabold"
+                      style={{ color: "oklch(28% 0.1 145)" }}
+                    >
+                      {weeklyCompleteDeliveries.length}
+                    </p>
+                    <p
+                      className="text-[9px] font-bold uppercase tracking-wide mt-0.5"
+                      style={{ color: "oklch(52% 0.1 145)" }}
+                    >
+                      Deliveries
                     </p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {weeklyAggregatedLabors.map((labor, idx) => (
-                      <motion.div
-                        // biome-ignore lint/suspicious/noArrayIndexKey: stable index
-                        key={`labor-${idx}`}
-                        data-ocid={`report.weekly.item.${idx + 1}`}
-                        initial={{ opacity: 0, scale: 0.96 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.28 + idx * 0.04 }}
-                        className="flex items-center justify-between px-3 py-2.5 rounded-xl"
-                        style={{
-                          background: "white",
-                          border: "1.5px solid oklch(90% 0.05 145)",
-                        }}
-                      >
-                        <span
-                          className="text-xs font-semibold truncate mr-1"
-                          style={{ color: "oklch(35% 0.06 145)" }}
-                        >
-                          {labor.name}
-                        </span>
-                        <span
-                          className="text-xs font-extrabold flex-shrink-0"
-                          style={{ color: "oklch(32% 0.16 145)" }}
-                        >
-                          {labor.amount > 0
-                            ? `৳${labor.amount.toFixed(2)}`
-                            : "—"}
-                        </span>
-                      </motion.div>
-                    ))}
+                  <div
+                    className="rounded-xl p-3 text-center"
+                    style={{
+                      background: "white",
+                      border: "1.5px solid oklch(88% 0.07 145)",
+                    }}
+                  >
+                    <p
+                      className="text-lg font-extrabold"
+                      style={{ color: "oklch(28% 0.1 145)" }}
+                    >
+                      {weeklyDateRows.length}
+                    </p>
+                    <p
+                      className="text-[9px] font-bold uppercase tracking-wide mt-0.5"
+                      style={{ color: "oklch(52% 0.1 145)" }}
+                    >
+                      Days
+                    </p>
                   </div>
-                </motion.div>
-              )}
-            </>
-          )}
-        </main>
+                  <div
+                    className="rounded-xl p-3 text-center"
+                    style={{
+                      background: "white",
+                      border: "1.5px solid oklch(88% 0.07 145)",
+                    }}
+                  >
+                    <p
+                      className="text-lg font-extrabold"
+                      style={{ color: "oklch(28% 0.1 145)" }}
+                    >
+                      {weeklyLaborNames.length}
+                    </p>
+                    <p
+                      className="text-[9px] font-bold uppercase tracking-wide mt-0.5"
+                      style={{ color: "oklch(52% 0.1 145)" }}
+                    >
+                      Laborers
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </main>
+        </>
       )}
     </div>
   );
