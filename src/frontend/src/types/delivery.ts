@@ -8,6 +8,7 @@ export interface PendingDelivery {
   date: string;
   customerName: string;
   address: string;
+  phoneNumber?: string;
   dueAmount?: number;
   bricks: BrickSelection[];
   totalBricks: number;
@@ -44,6 +45,7 @@ export interface CompleteDelivery {
   date: string;
   customerName: string;
   address: string;
+  phoneNumber?: string;
   dueAmount?: number;
   bricks: BrickSelection[];
   totalBricks: number;

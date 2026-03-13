@@ -31,6 +31,7 @@ export default function AddPendingDelivery({ onSave, onBack }: Props) {
   const [date, setDate] = useState(todayString());
   const [customerName, setCustomerName] = useState("");
   const [address, setAddress] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [dueAmount, setDueAmount] = useState("");
   const [selectedBricks, setSelectedBricks] = useState<Record<string, number>>(
     {},
@@ -84,6 +85,7 @@ export default function AddPendingDelivery({ onSave, onBack }: Props) {
       date,
       customerName: customerName.trim(),
       address: address.trim(),
+      phoneNumber: phoneNumber.trim() || undefined,
       dueAmount: dueAmount ? Number.parseFloat(dueAmount) : undefined,
       bricks,
       totalBricks,
@@ -189,6 +191,29 @@ export default function AddPendingDelivery({ onSave, onBack }: Props) {
                 placeholder="ঠিকানা লিখুন"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
+                className="mt-1 h-11 rounded-xl border-2 text-sm"
+                style={{ borderColor: "oklch(88% 0.06 145)" }}
+              />
+            </div>
+            <div>
+              <Label
+                className="text-xs font-semibold"
+                style={{ color: "oklch(40% 0.08 145)" }}
+              >
+                Phone Number{" "}
+                <span
+                  className="font-normal"
+                  style={{ color: "oklch(65% 0.06 145)" }}
+                >
+                  (optional)
+                </span>
+              </Label>
+              <Input
+                data-ocid="add-pending.input"
+                type="tel"
+                placeholder="ফোন নম্বর লিখুন"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
                 className="mt-1 h-11 rounded-xl border-2 text-sm"
                 style={{ borderColor: "oklch(88% 0.06 145)" }}
               />

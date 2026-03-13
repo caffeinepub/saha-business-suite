@@ -108,11 +108,11 @@ export default function CompletePendingPage({
     const unloadingShare = totalAmount / 2;
     const perLoadingLaborAmount =
       loadingLabors.length > 0 && loadingShare > 0
-        ? Math.round(loadingShare / loadingLabors.length)
+        ? loadingShare / loadingLabors.length
         : 0;
     const perUnloadingLaborAmount =
       unloadingLabors.length > 0 && unloadingShare > 0
-        ? Math.round(unloadingShare / unloadingLabors.length)
+        ? unloadingShare / unloadingLabors.length
         : 0;
 
     const completed: CompleteDelivery = {
@@ -532,7 +532,7 @@ export default function CompletePendingPage({
                   className="text-lg font-extrabold font-display mt-0.5"
                   style={{ color: "oklch(35% 0.16 270)" }}
                 >
-                  ৳{autoRate.toLocaleString()}
+                  ৳{autoRate.toFixed(2)}
                 </p>
               </div>
               <div className="rounded-xl p-3 bg-white text-center">
@@ -546,7 +546,7 @@ export default function CompletePendingPage({
                   className="text-lg font-extrabold font-display mt-0.5"
                   style={{ color: "oklch(35% 0.16 270)" }}
                 >
-                  ৳{Math.round(totalAmount).toLocaleString()}
+                  ৳{totalAmount.toFixed(2)}
                 </p>
               </div>
               {loadingShare > 0 && (
@@ -561,7 +561,7 @@ export default function CompletePendingPage({
                     className="text-lg font-extrabold font-display mt-0.5"
                     style={{ color: "oklch(35% 0.16 145)" }}
                   >
-                    ৳{Math.round(loadingShare).toLocaleString()}
+                    ৳{loadingShare.toFixed(2)}
                   </p>
                 </div>
               )}
@@ -577,7 +577,7 @@ export default function CompletePendingPage({
                     className="text-lg font-extrabold font-display mt-0.5"
                     style={{ color: "oklch(35% 0.16 240)" }}
                   >
-                    ৳{Math.round(unloadingShare).toLocaleString()}
+                    ৳{unloadingShare.toFixed(2)}
                   </p>
                 </div>
               )}
@@ -593,7 +593,7 @@ export default function CompletePendingPage({
                     className="text-lg font-extrabold font-display mt-0.5"
                     style={{ color: "oklch(35% 0.16 145)" }}
                   >
-                    ৳{Math.round(perLoadingLabor).toLocaleString()}
+                    ৳{perLoadingLabor.toFixed(2)}
                   </p>
                 </div>
               )}
@@ -609,7 +609,7 @@ export default function CompletePendingPage({
                     className="text-lg font-extrabold font-display mt-0.5"
                     style={{ color: "oklch(35% 0.16 240)" }}
                   >
-                    ৳{Math.round(perUnloadingLabor).toLocaleString()}
+                    ৳{perUnloadingLabor.toFixed(2)}
                   </p>
                 </div>
               )}
@@ -625,7 +625,7 @@ export default function CompletePendingPage({
                     className="text-lg font-extrabold font-display mt-0.5"
                     style={{ color: "oklch(42% 0.14 55)" }}
                   >
-                    ৳{safeBatsAmount.toLocaleString()}
+                    ৳{safeBatsAmount.toFixed(2)}
                   </p>
                 </div>
               )}

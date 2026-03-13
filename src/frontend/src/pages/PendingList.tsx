@@ -7,6 +7,7 @@ import {
   MapPin,
   PackageX,
   Pencil,
+  Phone,
   Trash2,
   User,
 } from "lucide-react";
@@ -51,6 +52,7 @@ export default function PendingList({
           </div>
           <div style="font-size:11px;color:#888;margin-bottom:4px">${d.date}</div>
           <div style="font-size:11px;color:#666;margin-bottom:4px">${d.address}</div>
+          ${d.phoneNumber ? `<div style="font-size:11px;color:#555;margin-bottom:4px">📞 ${d.phoneNumber}</div>` : ""}
           <div style="font-size:12px;color:#555;margin-bottom:4px">ইট: <strong>${d.totalBricks}</strong></div>
           ${d.dueAmount !== undefined ? `<div style="font-size:12px;color:#e65100;font-weight:700">বকেয়া: ৳${d.dueAmount.toLocaleString()}</div>` : ""}
         </div>`,
@@ -66,13 +68,15 @@ export default function PendingList({
       <p style="color:#aaa;font-size:11px;text-align:center;margin-top:24px">SAHA Business Suite</p>
       </body></html>`;
 
-    const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "saha-pending-list.pdf";
-    a.click();
-    URL.revokeObjectURL(url);
+    const printWin = window.open("", "_blank");
+    if (printWin) {
+      printWin.document.write(html);
+      printWin.document.close();
+      printWin.focus();
+      setTimeout(() => {
+        printWin.print();
+      }, 500);
+    }
   }
 
   if (completingDelivery) {
@@ -227,7 +231,7 @@ export default function PendingList({
               </div>
 
               {/* Address */}
-              <div className="flex items-start gap-2 mb-3">
+              <div className="flex items-start gap-2 mb-2">
                 <MapPin
                   size={13}
                   className="mt-0.5 flex-shrink-0"
@@ -240,6 +244,23 @@ export default function PendingList({
                   {d.address}
                 </p>
               </div>
+
+              {/* Phone Number */}
+              {d.phoneNumber && (
+                <div className="flex items-center gap-2 mb-3">
+                  <Phone
+                    size={13}
+                    className="flex-shrink-0"
+                    style={{ color: "oklch(55% 0.12 145)" }}
+                  />
+                  <p
+                    className="text-xs font-medium"
+                    style={{ color: "oklch(45% 0.06 145)" }}
+                  >
+                    {d.phoneNumber}
+                  </p>
+                </div>
+              )}
 
               {/* Bricks row */}
               <div

@@ -172,6 +172,7 @@ export default function DirectDelivery({
   const [date, setDate] = useState(todayString());
   const [customerName, setCustomerName] = useState("");
   const [address, setAddress] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [dueAmount, setDueAmount] = useState("");
   const [selectedBricks, setSelectedBricks] = useState<Record<string, number>>(
     {},
@@ -228,11 +229,11 @@ export default function DirectDelivery({
       : 0;
   const perLoadingLaborAmount =
     loadingLabors.length > 0 && loadingShare > 0
-      ? Math.round(loadingShare / loadingLabors.length)
+      ? loadingShare / loadingLabors.length
       : 0;
   const perUnloadingLaborAmount =
     unloadingLabors.length > 0 && unloadingShare > 0
-      ? Math.round(unloadingShare / unloadingLabors.length)
+      ? unloadingShare / unloadingLabors.length
       : 0;
 
   const filteredVehicles = vehicleType
@@ -283,6 +284,7 @@ export default function DirectDelivery({
       date,
       customerName: customerName.trim(),
       address: address.trim(),
+      phoneNumber: phoneNumber.trim() || undefined,
       dueAmount: dueAmount ? Number.parseFloat(dueAmount) : undefined,
       bricks,
       totalBricks,
@@ -396,6 +398,29 @@ export default function DirectDelivery({
                 placeholder="ঠিকানা লিখুন"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
+                className="mt-1 h-11 rounded-xl border-2 text-sm"
+                style={{ borderColor: "oklch(88% 0.06 145)" }}
+              />
+            </div>
+            <div>
+              <Label
+                className="text-xs font-semibold"
+                style={{ color: "oklch(40% 0.08 145)" }}
+              >
+                Phone Number{" "}
+                <span
+                  className="font-normal"
+                  style={{ color: "oklch(65% 0.06 145)" }}
+                >
+                  (optional)
+                </span>
+              </Label>
+              <Input
+                data-ocid="direct-delivery.input"
+                type="tel"
+                placeholder="ফোন নম্বর লিখুন"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
                 className="mt-1 h-11 rounded-xl border-2 text-sm"
                 style={{ borderColor: "oklch(88% 0.06 145)" }}
               />
@@ -778,7 +803,7 @@ export default function DirectDelivery({
                   className="text-lg font-extrabold font-display mt-0.5"
                   style={{ color: "oklch(35% 0.16 270)" }}
                 >
-                  ৳{autoRate.toLocaleString()}
+                  ৳{autoRate.toFixed(2)}
                 </p>
               </div>
               <div className="rounded-xl p-3 bg-white text-center">
@@ -792,7 +817,7 @@ export default function DirectDelivery({
                   className="text-lg font-extrabold font-display mt-0.5"
                   style={{ color: "oklch(35% 0.16 270)" }}
                 >
-                  ৳{Math.round(totalAmount).toLocaleString()}
+                  ৳{totalAmount.toFixed(2)}
                 </p>
               </div>
               {loadingShare > 0 && (
@@ -807,7 +832,7 @@ export default function DirectDelivery({
                     className="text-lg font-extrabold font-display mt-0.5"
                     style={{ color: "oklch(35% 0.16 145)" }}
                   >
-                    ৳{Math.round(loadingShare).toLocaleString()}
+                    ৳{loadingShare.toFixed(2)}
                   </p>
                 </div>
               )}
@@ -823,7 +848,7 @@ export default function DirectDelivery({
                     className="text-lg font-extrabold font-display mt-0.5"
                     style={{ color: "oklch(35% 0.16 240)" }}
                   >
-                    ৳{Math.round(unloadingShare).toLocaleString()}
+                    ৳{unloadingShare.toFixed(2)}
                   </p>
                 </div>
               )}
@@ -839,7 +864,7 @@ export default function DirectDelivery({
                     className="text-lg font-extrabold font-display mt-0.5"
                     style={{ color: "oklch(35% 0.16 145)" }}
                   >
-                    ৳{perLoadingLaborAmount.toLocaleString()}
+                    ৳{perLoadingLaborAmount.toFixed(2)}
                   </p>
                 </div>
               )}
@@ -855,7 +880,7 @@ export default function DirectDelivery({
                     className="text-lg font-extrabold font-display mt-0.5"
                     style={{ color: "oklch(35% 0.16 240)" }}
                   >
-                    ৳{perUnloadingLaborAmount.toLocaleString()}
+                    ৳{perUnloadingLaborAmount.toFixed(2)}
                   </p>
                 </div>
               )}
@@ -871,7 +896,7 @@ export default function DirectDelivery({
                     className="text-lg font-extrabold font-display mt-0.5"
                     style={{ color: "oklch(42% 0.14 55)" }}
                   >
-                    ৳{safetyBatsAmount.toLocaleString()}
+                    ৳{safetyBatsAmount.toFixed(2)}
                   </p>
                 </div>
               )}

@@ -1,20 +1,29 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Camera,
   CheckCircle2,
   FileText,
   Home,
   IndianRupee,
   Layers,
   LogIn,
+  LogOut,
   Package,
   PlusCircle,
   Settings,
   Truck,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useUserProfile } from "./hooks/useQueries";
@@ -104,7 +113,7 @@ const DEFAULT_RATES: RatesConfig = {
 
 export default function App() {
   const now = useClock();
-  const { login, loginStatus, identity, isInitializing } =
+  const { login, clear, loginStatus, identity, isInitializing } =
     useInternetIdentity();
   const { data: profile, isLoading: profileLoading } = useUserProfile();
   const [activeTab, setActiveTab] = useState<NavTab>("home");
@@ -123,11 +132,25 @@ export default function App() {
     "saha_rates",
     DEFAULT_RATES,
   );
+  const [savedName, setSavedName] = useLocalStorage<string>(
+    "saha_display_name",
+    "",
+  );
+  const [userPhoto, setUserPhoto] = useLocalStorage<string>(
+    "saha_profile_photo",
+    "",
+  );
+
+  // Profile sheet state
+  const [profileSheetOpen, setProfileSheetOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isLoggedIn = !!identity;
   const isLoggingIn = loginStatus === "logging-in";
 
   const displayName =
+    (savedName && savedName.trim() !== "" ? savedName.trim() : null) ||
     profile?.displayName ||
     (identity ? `${identity.getPrincipal().toString().slice(0, 8)}...` : null);
 
@@ -145,6 +168,31 @@ export default function App() {
     (sum, d) => sum + (d.totalAmount ?? 0),
     0,
   );
+
+  function openProfileSheet() {
+    setEditName(displayName ?? "");
+    setProfileSheetOpen(true);
+  }
+
+  function handleSaveProfile() {
+    if (editName.trim()) {
+      setSavedName(editName.trim());
+    }
+    setProfileSheetOpen(false);
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result;
+      if (typeof result === "string") {
+        setUserPhoto(result);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
 
   function handleSavePending(delivery: PendingDelivery) {
     setPendingDeliveries((prev) => [...prev, delivery]);
@@ -298,36 +346,63 @@ export default function App() {
                 <Skeleton className="h-10 w-10 rounded-full" />
               </div>
             ) : isLoggedIn ? (
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <div className="text-right">
                   <p
                     className="text-[11px]"
                     style={{ color: "oklch(60% 0.04 145)" }}
                   >
-                    Welcome back,
+                    Welcome Back
                   </p>
-                  {profileLoading ? (
+                  {profileLoading && !savedName ? (
                     <Skeleton className="h-4 w-24 mt-0.5" />
                   ) : (
                     <p
-                      className="text-sm font-bold"
+                      className="text-sm font-bold whitespace-nowrap"
                       style={{ color: "oklch(28% 0.06 145)" }}
                     >
                       {displayName}
                     </p>
                   )}
                 </div>
-                <Avatar
-                  className="h-10 w-10 border-2"
-                  style={{ borderColor: "oklch(70% 0.15 145)" }}
+
+                {/* Logout button */}
+                <button
+                  type="button"
+                  data-ocid="dashboard.logout_button"
+                  onClick={clear}
+                  title="Logout"
+                  className="flex items-center justify-center h-7 w-7 rounded-full transition-colors hover:bg-red-50 active:bg-red-100"
+                  style={{ color: "oklch(55% 0.18 25)" }}
                 >
-                  <AvatarFallback
-                    className="text-sm font-bold text-white"
-                    style={{ background: "oklch(50% 0.18 145)" }}
+                  <LogOut size={16} />
+                </button>
+
+                {/* Avatar — click to edit profile */}
+                <button
+                  type="button"
+                  onClick={openProfileSheet}
+                  className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                  style={
+                    {
+                      "--tw-ring-color": "oklch(50% 0.18 145)",
+                    } as React.CSSProperties
+                  }
+                  title="Edit profile"
+                >
+                  <Avatar
+                    className="h-10 w-10 border-2"
+                    style={{ borderColor: "oklch(70% 0.15 145)" }}
                   >
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
+                    {userPhoto && <AvatarImage src={userPhoto} alt="profile" />}
+                    <AvatarFallback
+                      className="text-sm font-bold text-white"
+                      style={{ background: "oklch(50% 0.18 145)" }}
+                    >
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
               </div>
             ) : (
               <Button
@@ -533,6 +608,101 @@ export default function App() {
             })}
           </div>
         </nav>
+
+        {/* Profile Edit Sheet */}
+        <Sheet open={profileSheetOpen} onOpenChange={setProfileSheetOpen}>
+          <SheetContent
+            data-ocid="profile.sheet"
+            side="bottom"
+            className="rounded-t-2xl px-6 pb-10 pt-6 max-w-[430px] mx-auto"
+          >
+            <SheetHeader className="mb-6">
+              <SheetTitle
+                className="text-center text-lg font-bold"
+                style={{ color: "oklch(28% 0.06 145)" }}
+              >
+                Edit Profile
+              </SheetTitle>
+            </SheetHeader>
+
+            {/* Photo preview */}
+            <div className="flex flex-col items-center gap-3 mb-6">
+              <div className="relative">
+                <Avatar
+                  className="h-20 w-20 border-4"
+                  style={{ borderColor: "oklch(70% 0.15 145)" }}
+                >
+                  {userPhoto && <AvatarImage src={userPhoto} alt="profile" />}
+                  <AvatarFallback
+                    className="text-2xl font-bold text-white"
+                    style={{ background: "oklch(50% 0.18 145)" }}
+                  >
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <button
+                  type="button"
+                  data-ocid="profile.upload_button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full flex items-center justify-center shadow-md"
+                  style={{ background: "oklch(50% 0.18 145)", color: "white" }}
+                  title="Change photo"
+                >
+                  <Camera size={13} />
+                </button>
+              </div>
+              <p className="text-xs" style={{ color: "oklch(60% 0.04 145)" }}>
+                Tap camera icon to change photo
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+            </div>
+
+            {/* Name input */}
+            <div className="mb-6">
+              <label
+                htmlFor="profile-display-name"
+                className="block text-xs font-semibold mb-1.5 uppercase tracking-wide"
+                style={{ color: "oklch(55% 0.08 145)" }}
+              >
+                Display Name
+              </label>
+              <Input
+                id="profile-display-name"
+                data-ocid="profile.input"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Enter your name (e.g. PRABIR SAHA)"
+                className="text-sm font-medium"
+              />
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <Button
+                data-ocid="profile.cancel_button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setProfileSheetOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                data-ocid="profile.save_button"
+                className="flex-1 font-semibold"
+                style={{ background: "oklch(50% 0.18 145)", color: "white" }}
+                onClick={handleSaveProfile}
+              >
+                Save
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
   );

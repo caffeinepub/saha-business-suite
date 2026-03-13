@@ -292,7 +292,7 @@ export default function CompleteList({
                             color: "oklch(32% 0.18 145)",
                           }}
                         >
-                          ৳{Math.round(d.totalAmount).toLocaleString()}
+                          ৳{d.totalAmount.toFixed(2)}
                         </span>
                       )}
                     </div>
