@@ -45,6 +45,41 @@ export function buildMergedLabors(d: CompleteDelivery): MergedLabor[] {
   return Array.from(map.entries()).map(([name, amount]) => ({ name, amount }));
 }
 
+function CompleteEditAddLabor({
+  onAdd,
+  placeholder,
+}: { onAdd: (name: string) => void; placeholder: string }) {
+  const [val, setVal] = useState("");
+  return (
+    <div className="flex gap-2 items-center">
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        className="flex-1 px-3 py-2 rounded-xl text-xs outline-none"
+        style={{
+          background: "oklch(96% 0.03 145)",
+          border: "1.5px solid oklch(85% 0.07 145)",
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => {
+          if (val.trim()) {
+            onAdd(val.trim());
+            setVal("");
+          }
+        }}
+        className="px-3 py-2 rounded-xl text-xs font-bold text-white"
+        style={{ background: "oklch(48% 0.18 145)" }}
+      >
+        +
+      </button>
+    </div>
+  );
+}
+
 export default function CompleteList({
   deliveries,
   onBack,
@@ -117,12 +152,18 @@ export default function CompleteList({
       })
       .join("");
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>SAHA Complete Deliveries</title>
-      <style>body{font-family:sans-serif;margin:20px;color:#222}@media print{body{margin:0}}</style>
+      <style>
+        @page { size: A4 portrait; margin: 1.5cm 1cm; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; color: #111827; width: 210mm; max-width: 210mm; }
+        @media print { body { background: white; } .page-break { page-break-before: always; } }
+        @media screen { body { padding: 20px; background: #f3f4f6; } .content { background: white; max-width: 210mm; margin: 0 auto; padding: 20px; } }
+      </style>
       </head><body>
-      <h2 style="color:#1b5e20;margin-bottom:4px">SAHA - Complete Delivery List</h2>
+      <div class="content"><h2 style="color:#1b5e20;margin-bottom:4px">SAHA - Complete Delivery List</h2>
       <p style="color:#666;font-size:13px;margin-bottom:16px">${periodLabel} &nbsp;|&nbsp; Total: ${filtered.length} deliveries</p>
       ${rows}
-      <p style="color:#aaa;font-size:11px;text-align:center;margin-top:24px">SAHA Business Suite</p>
+      <p style="color:#aaa;font-size:11px;text-align:center;margin-top:24px">SAHA Business Suite</p></div>
       </body></html>`;
   }
 
@@ -284,7 +325,7 @@ export default function CompleteList({
             className="text-[11px] font-medium"
             style={{ color: "oklch(58% 0.08 145)" }}
           >
-            {filtered.length} টি সম্পন্ন ডেলিভারি
+            {filtered.length} Complete Deliveries
           </p>
         </div>
         <div className="flex gap-2">
@@ -394,7 +435,7 @@ export default function CompleteList({
                 className="text-base font-bold"
                 style={{ color: "oklch(38% 0.08 145)" }}
               >
-                কোনো সম্পন্ন ড৅লিভারি নেই
+                No complete deliveries
               </p>
               <p
                 className="text-xs mt-1"
@@ -544,7 +585,7 @@ export default function CompleteList({
                   </div>
                 )}
 
-                {/* Labor Details - merged, no duplicates */}
+                {/* Lebour Details - merged, no duplicates */}
                 {mergedLabors.length > 0 && (
                   <div
                     className="mt-3 pt-3"
@@ -559,7 +600,7 @@ export default function CompleteList({
                         className="text-[10px] font-extrabold uppercase tracking-widest"
                         style={{ color: "oklch(50% 0.12 145)" }}
                       >
-                        Labor Details
+                        Lebour Details
                       </p>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -633,13 +674,13 @@ export default function CompleteList({
               className="text-base font-extrabold mb-1"
               style={{ color: "oklch(28% 0.06 145)" }}
             >
-              ডিলিট করবেন?
+              Confirm Delete?
             </h3>
             <p
               className="text-sm mb-5"
               style={{ color: "oklch(55% 0.05 145)" }}
             >
-              এই ডেলিভারি রেকর্ড স্থায়ীভাবে মুছে যাবে।
+              This delivery record will be permanently deleted.
             </p>
             <div className="flex gap-3">
               <button
@@ -652,7 +693,7 @@ export default function CompleteList({
                   color: "oklch(40% 0.1 145)",
                 }}
               >
-                বাতিল
+                Cancel
               </button>
               <button
                 type="button"
@@ -661,7 +702,7 @@ export default function CompleteList({
                 className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white"
                 style={{ background: "oklch(42% 0.18 25)" }}
               >
-                ডিলিট
+                Delete
               </button>
             </div>
           </motion.div>
@@ -678,14 +719,15 @@ export default function CompleteList({
             data-ocid="complete-list.modal"
             initial={{ y: 60, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="bg-white rounded-t-3xl px-5 pt-5 pb-8 w-full max-w-[430px] shadow-xl"
+            className="bg-white rounded-t-3xl px-5 pt-5 pb-8 w-full max-w-[430px] shadow-xl overflow-y-auto"
+            style={{ maxHeight: "85vh" }}
           >
             <div className="flex items-center justify-between mb-4">
               <h3
                 className="text-base font-extrabold"
                 style={{ color: "oklch(28% 0.06 145)" }}
               >
-                ড৅লিভারি এডিট করুন
+                Edit Delivery
               </h3>
               <button
                 type="button"
@@ -697,21 +739,20 @@ export default function CompleteList({
                   color: "oklch(45% 0.12 145)",
                 }}
               >
-                বাতিল
+                Cancel
               </button>
             </div>
             <div className="space-y-3">
+              {/* Date */}
               <div>
-                <label
-                  htmlFor="edit-date"
+                <p
                   className="text-[11px] font-bold uppercase tracking-wide block mb-1"
                   style={{ color: "oklch(50% 0.1 145)" }}
                 >
-                  তারিখ
-                </label>
+                  Date
+                </p>
                 <input
                   type="date"
-                  id="edit-date"
                   data-ocid="complete-list.input"
                   value={editDelivery.date}
                   onChange={(e) =>
@@ -724,17 +765,16 @@ export default function CompleteList({
                   }}
                 />
               </div>
+              {/* Customer Name */}
               <div>
-                <label
-                  htmlFor="edit-customer"
+                <p
                   className="text-[11px] font-bold uppercase tracking-wide block mb-1"
                   style={{ color: "oklch(50% 0.1 145)" }}
                 >
-                  গ্রাহকের নাম
-                </label>
+                  Customer Name
+                </p>
                 <input
                   type="text"
-                  id="edit-customer"
                   data-ocid="complete-list.input"
                   value={editDelivery.customerName}
                   onChange={(e) =>
@@ -750,17 +790,41 @@ export default function CompleteList({
                   }}
                 />
               </div>
+              {/* Invoice Number */}
               <div>
-                <label
-                  htmlFor="edit-address"
+                <p
                   className="text-[11px] font-bold uppercase tracking-wide block mb-1"
                   style={{ color: "oklch(50% 0.1 145)" }}
                 >
-                  ঠিকানা
-                </label>
+                  Invoice Number (Optional)
+                </p>
                 <input
                   type="text"
-                  id="edit-address"
+                  data-ocid="complete-list.input"
+                  value={editDelivery.invoiceNumber ?? ""}
+                  onChange={(e) =>
+                    setEditDelivery({
+                      ...editDelivery,
+                      invoiceNumber: e.target.value || undefined,
+                    })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "oklch(96% 0.03 145)",
+                    border: "1.5px solid oklch(85% 0.07 145)",
+                  }}
+                />
+              </div>
+              {/* Address */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Address
+                </p>
+                <input
+                  type="text"
                   data-ocid="complete-list.input"
                   value={editDelivery.address}
                   onChange={(e) =>
@@ -776,6 +840,298 @@ export default function CompleteList({
                   }}
                 />
               </div>
+              {/* Phone Number */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Phone Number (Optional)
+                </p>
+                <input
+                  type="text"
+                  data-ocid="complete-list.input"
+                  value={editDelivery.phoneNumber ?? ""}
+                  onChange={(e) =>
+                    setEditDelivery({
+                      ...editDelivery,
+                      phoneNumber: e.target.value || undefined,
+                    })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "oklch(96% 0.03 145)",
+                    border: "1.5px solid oklch(85% 0.07 145)",
+                  }}
+                />
+              </div>
+              {/* Location Type */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Location Type
+                </p>
+                <div className="flex gap-2">
+                  {(["Local", "Outside"] as const).map((lt) => (
+                    <button
+                      key={lt}
+                      type="button"
+                      data-ocid="complete-list.toggle"
+                      onClick={() =>
+                        setEditDelivery({ ...editDelivery, locationType: lt })
+                      }
+                      className="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
+                      style={{
+                        background:
+                          editDelivery.locationType === lt
+                            ? "oklch(48% 0.18 145)"
+                            : "oklch(96% 0.03 145)",
+                        color:
+                          editDelivery.locationType === lt
+                            ? "white"
+                            : "oklch(45% 0.1 145)",
+                        border: `1.5px solid ${editDelivery.locationType === lt ? "oklch(42% 0.18 145)" : "oklch(85% 0.07 145)"}`,
+                      }}
+                    >
+                      {lt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Vehicle Type */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Vehicle Type
+                </p>
+                <div className="flex gap-2">
+                  {(["Tractor", "12 Wheel"] as const).map((vt) => (
+                    <button
+                      key={vt}
+                      type="button"
+                      data-ocid="complete-list.toggle"
+                      onClick={() =>
+                        setEditDelivery({ ...editDelivery, vehicleType: vt })
+                      }
+                      className="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
+                      style={{
+                        background:
+                          editDelivery.vehicleType === vt
+                            ? "oklch(48% 0.18 145)"
+                            : "oklch(96% 0.03 145)",
+                        color:
+                          editDelivery.vehicleType === vt
+                            ? "white"
+                            : "oklch(45% 0.1 145)",
+                        border: `1.5px solid ${editDelivery.vehicleType === vt ? "oklch(42% 0.18 145)" : "oklch(85% 0.07 145)"}`,
+                      }}
+                    >
+                      {vt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Vehicle Number */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Vehicle Number
+                </p>
+                <input
+                  type="text"
+                  data-ocid="complete-list.input"
+                  value={editDelivery.vehicleNumber}
+                  onChange={(e) =>
+                    setEditDelivery({
+                      ...editDelivery,
+                      vehicleNumber: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "oklch(96% 0.03 145)",
+                    border: "1.5px solid oklch(85% 0.07 145)",
+                  }}
+                />
+              </div>
+              {/* Total Bricks */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Total Bricks
+                </p>
+                <input
+                  type="number"
+                  data-ocid="complete-list.input"
+                  value={editDelivery.totalBricks}
+                  onChange={(e) =>
+                    setEditDelivery({
+                      ...editDelivery,
+                      totalBricks: Number(e.target.value),
+                    })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "oklch(96% 0.03 145)",
+                    border: "1.5px solid oklch(85% 0.07 145)",
+                  }}
+                />
+              </div>
+              {/* Loading Lebour Names */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Loading Lebour
+                </p>
+                <div className="space-y-1.5">
+                  {editDelivery.loadingLaborNames.map((name, li) => (
+                    <div
+                      key={`loading-${li}-${name}`}
+                      className="flex gap-2 items-center"
+                    >
+                      <span
+                        className="flex-1 text-sm px-3 py-2 rounded-xl"
+                        style={{
+                          background: "oklch(96% 0.03 145)",
+                          border: "1.5px solid oklch(85% 0.07 145)",
+                          color: "oklch(28% 0.06 145)",
+                        }}
+                      >
+                        {name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditDelivery({
+                            ...editDelivery,
+                            loadingLaborNames:
+                              editDelivery.loadingLaborNames.filter(
+                                (_, i) => i !== li,
+                              ),
+                          })
+                        }
+                        className="text-red-400 font-bold px-2 py-1 rounded-lg text-xs"
+                        style={{ background: "oklch(96% 0.04 15)" }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <CompleteEditAddLabor
+                    onAdd={(n) =>
+                      setEditDelivery({
+                        ...editDelivery,
+                        loadingLaborNames: [
+                          ...editDelivery.loadingLaborNames,
+                          n,
+                        ],
+                      })
+                    }
+                    placeholder="Add loading lebour"
+                  />
+                </div>
+              </div>
+              {/* Unloading Lebour Names */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Unloading Lebour
+                </p>
+                <div className="space-y-1.5">
+                  {editDelivery.unloadingLaborNames.map((name, li) => (
+                    <div
+                      key={`unloading-${li}-${name}`}
+                      className="flex gap-2 items-center"
+                    >
+                      <span
+                        className="flex-1 text-sm px-3 py-2 rounded-xl"
+                        style={{
+                          background: "oklch(96% 0.03 145)",
+                          border: "1.5px solid oklch(85% 0.07 145)",
+                          color: "oklch(28% 0.06 145)",
+                        }}
+                      >
+                        {name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditDelivery({
+                            ...editDelivery,
+                            unloadingLaborNames:
+                              editDelivery.unloadingLaborNames.filter(
+                                (_, i) => i !== li,
+                              ),
+                          })
+                        }
+                        className="text-red-400 font-bold px-2 py-1 rounded-lg text-xs"
+                        style={{ background: "oklch(96% 0.04 15)" }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <CompleteEditAddLabor
+                    onAdd={(n) =>
+                      setEditDelivery({
+                        ...editDelivery,
+                        unloadingLaborNames: [
+                          ...editDelivery.unloadingLaborNames,
+                          n,
+                        ],
+                      })
+                    }
+                    placeholder="Add unloading lebour"
+                  />
+                </div>
+              </div>
+              {/* Payment Status */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Payment Status
+                </p>
+                <div className="flex gap-2">
+                  {([false, true] as const).map((paid) => (
+                    <button
+                      key={String(paid)}
+                      type="button"
+                      data-ocid="complete-list.toggle"
+                      onClick={() =>
+                        setEditDelivery({ ...editDelivery, paidMoney: paid })
+                      }
+                      className="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
+                      style={{
+                        background:
+                          editDelivery.paidMoney === paid
+                            ? "oklch(48% 0.18 145)"
+                            : "oklch(96% 0.03 145)",
+                        color:
+                          editDelivery.paidMoney === paid
+                            ? "white"
+                            : "oklch(45% 0.1 145)",
+                        border: `1.5px solid ${editDelivery.paidMoney === paid ? "oklch(42% 0.18 145)" : "oklch(85% 0.07 145)"}`,
+                      }}
+                    >
+                      {paid ? "Paid Money" : "Not Paid"}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
             <button
               type="button"
@@ -784,7 +1140,7 @@ export default function CompleteList({
               className="w-full mt-5 py-3 rounded-xl font-bold text-white text-sm"
               style={{ background: "oklch(48% 0.18 145)" }}
             >
-              সেভ করুন
+              Save
             </button>
           </motion.div>
         </div>

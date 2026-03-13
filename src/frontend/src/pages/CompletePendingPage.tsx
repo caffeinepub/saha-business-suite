@@ -198,7 +198,7 @@ export default function CompletePendingPage({
             className="text-[11px] font-medium"
             style={{ color: "oklch(58% 0.08 145)" }}
           >
-            Vehicle assign করুন
+            Assign Vehicle
           </p>
         </div>
         <div
@@ -322,7 +322,7 @@ export default function CompletePendingPage({
                 className="text-xs text-center py-3"
                 style={{ color: "oklch(62% 0.06 145)" }}
               >
-                কোনো {selectedType} গাড়ি সেটিংসে যোগ করা হয়নি
+                No {selectedType} vehicles found in settings
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
@@ -356,7 +356,7 @@ export default function CompletePendingPage({
           </motion.div>
         )}
 
-        {/* Labor Section */}
+        {/* Lebour Section */}
         {selectedVehicle && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -364,13 +364,13 @@ export default function CompletePendingPage({
             className="rounded-2xl bg-white p-4 shadow-sm space-y-5"
             style={{ border: "1.5px solid oklch(90% 0.05 145)" }}
           >
-            {/* Loading Labor */}
+            {/* Loading Lebour */}
             <div>
               <p
                 className="text-xs font-extrabold uppercase tracking-wide mb-3"
                 style={{ color: "oklch(38% 0.1 145)" }}
               >
-                Loading Labor
+                Loading Lebour
               </p>
               <div className="flex flex-wrap gap-2 mb-3">
                 {loadingLabors.map((name, idx) => (
@@ -400,7 +400,7 @@ export default function CompletePendingPage({
                     className="text-xs"
                     style={{ color: "oklch(65% 0.05 145)" }}
                   >
-                    কোনো লেবার নেই
+                    No lebour added
                   </p>
                 )}
               </div>
@@ -411,7 +411,7 @@ export default function CompletePendingPage({
                   value={loadingInput}
                   onChange={(e) => setLoadingInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addLoadingLabor()}
-                  placeholder="লেবারের নাম লিখুন"
+                  placeholder="Lebour name"
                   className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
                   style={{
                     background: "oklch(96% 0.02 145)",
@@ -431,7 +431,7 @@ export default function CompletePendingPage({
               </div>
             </div>
 
-            {/* Unloading Labor */}
+            {/* Unloading Lebour */}
             <div
               style={{
                 borderTop: "1px solid oklch(92% 0.04 145)",
@@ -442,7 +442,7 @@ export default function CompletePendingPage({
                 className="text-xs font-extrabold uppercase tracking-wide mb-3"
                 style={{ color: "oklch(38% 0.1 55)" }}
               >
-                Unloading Labor
+                Unloading Lebour
               </p>
               <div className="flex flex-wrap gap-2 mb-3">
                 {unloadingLabors.map((name, idx) => (
@@ -472,7 +472,7 @@ export default function CompletePendingPage({
                     className="text-xs"
                     style={{ color: "oklch(65% 0.05 145)" }}
                   >
-                    কোনো লেবার নেই
+                    No lebour added
                   </p>
                 )}
               </div>
@@ -483,7 +483,7 @@ export default function CompletePendingPage({
                   value={unloadingInput}
                   onChange={(e) => setUnloadingInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addUnloadingLabor()}
-                  placeholder="লেবারের নাম লিখুন"
+                  placeholder="Lebour name"
                   className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
                   style={{
                     background: "oklch(96% 0.02 55)",
@@ -589,7 +589,7 @@ export default function CompletePendingPage({
                     className="text-[10px] font-semibold uppercase tracking-wide"
                     style={{ color: "oklch(58% 0.08 145)" }}
                   >
-                    Per Loading Labor
+                    Per Loading Lebour
                   </p>
                   <p
                     className="text-lg font-extrabold font-display mt-0.5"
@@ -605,7 +605,7 @@ export default function CompletePendingPage({
                     className="text-[10px] font-semibold uppercase tracking-wide"
                     style={{ color: "oklch(58% 0.08 240)" }}
                   >
-                    Per Unloading Labor
+                    Per Unloading Lebour
                   </p>
                   <p
                     className="text-lg font-extrabold font-display mt-0.5"

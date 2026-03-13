@@ -274,6 +274,11 @@ export default function App() {
             onDelete={(id) =>
               setPendingDeliveries((prev) => prev.filter((d) => d.id !== id))
             }
+            onEdit={(updated) =>
+              setPendingDeliveries((prev) =>
+                prev.map((d) => (d.id === updated.id ? updated : d)),
+              )
+            }
             onComplete={(completed) => {
               setCompleteDeliveries((prev) => [...prev, completed]);
               setPendingDeliveries((prev) =>

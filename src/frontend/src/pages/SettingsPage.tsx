@@ -5,16 +5,19 @@ import { Label } from "@/components/ui/label";
 import {
   ChevronLeft,
   Copy,
+  DatabaseBackup,
+  Download,
   Pencil,
   Plus,
   Save,
   Settings,
   Trash2,
   Truck,
+  Upload,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { RatesConfig, VehicleConfig } from "../types/delivery";
 
 interface Props {
@@ -47,6 +50,14 @@ function emptyForm() {
   };
 }
 
+const BACKUP_KEYS = [
+  "saha_pending",
+  "saha_complete",
+  "saha_vehicles",
+  "saha_rates",
+  "saha_display_name",
+];
+
 export default function SettingsPage({
   vehicles,
   rates,
@@ -54,7 +65,9 @@ export default function SettingsPage({
   onSaveRates,
   onBack,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<"vehicles" | "rates">("vehicles");
+  const [activeTab, setActiveTab] = useState<"vehicles" | "rates" | "backup">(
+    "vehicles",
+  );
 
   // Vehicles state
   const [list, setList] = useState<VehicleConfig[]>(vehicles);
@@ -68,6 +81,67 @@ export default function SettingsPage({
     rates || DEFAULT_RATES,
   );
   const [ratesSaved, setRatesSaved] = useState(false);
+
+  // Backup state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [restoreStatus, setRestoreStatus] = useState<
+    "idle" | "success" | "error"
+  >("idle");
+  const [restoreMsg, setRestoreMsg] = useState("");
+
+  function handleBackupDownload() {
+    const data: Record<string, unknown> = {};
+    for (const key of BACKUP_KEYS) {
+      const raw = localStorage.getItem(key);
+      if (raw !== null) {
+        try {
+          data[key] = JSON.parse(raw);
+        } catch {
+          data[key] = raw;
+        }
+      }
+    }
+    const exportObj = {
+      version: "1.0",
+      exportDate: new Date().toISOString(),
+      data,
+    };
+    const blob = new Blob([JSON.stringify(exportObj, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const dateStr = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `saha-backup-${dateStr}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleRestoreFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string);
+        if (!parsed?.data) throw new Error("Invalid format");
+        for (const [key, value] of Object.entries(parsed.data)) {
+          localStorage.setItem(key, JSON.stringify(value));
+        }
+        setRestoreStatus("success");
+        setRestoreMsg("Backup restored successfully! Reloading...");
+        setTimeout(() => window.location.reload(), 1500);
+      } catch {
+        setRestoreStatus("error");
+        setRestoreMsg("Invalid backup file");
+        setTimeout(() => setRestoreStatus("idle"), 3000);
+      }
+    };
+    reader.readAsText(file);
+    // Reset input so same file can be re-selected
+    e.target.value = "";
+  }
 
   function addLabor(type: "loading" | "unloading") {
     if (type === "loading") {
@@ -125,7 +199,6 @@ export default function SettingsPage({
       unloadingInput: "",
       unloadingLabors: [...(v.unloadingLabors ?? [])],
     });
-    // Scroll form into view
     setTimeout(() => {
       document
         .getElementById("vehicle-form")
@@ -141,11 +214,11 @@ export default function SettingsPage({
 
   function saveVehicle() {
     setFormError("");
-    if (!form.type) return setFormError("Vehicle type বেছে নিন।");
-    if (!form.number.trim()) return setFormError("Vehicle number দিন।");
+    if (!form.type) return setFormError("Please select vehicle type.");
+    if (!form.number.trim())
+      return setFormError("Please enter vehicle number.");
 
     if (editingId) {
-      // Update existing
       const updated = list.map((v) =>
         v.id === editingId
           ? {
@@ -162,7 +235,6 @@ export default function SettingsPage({
       onSave(updated);
       setEditingId(null);
     } else {
-      // Add new
       const vehicle: VehicleConfig = {
         id: `${Date.now()}`,
         vehicleType: form.type!,
@@ -227,13 +299,17 @@ export default function SettingsPage({
           className="flex rounded-full p-1"
           style={{ background: "oklch(90% 0.05 145)" }}
         >
-          {(["vehicles", "rates"] as const).map((tab) => {
+          {(["vehicles", "rates", "backup"] as const).map((tab) => {
             const isActive = activeTab === tab;
             return (
               <button
                 key={tab}
                 type="button"
-                data-ocid={`settings.${tab}.tab`}
+                data-ocid={
+                  tab === "backup"
+                    ? "settings.backup_tab"
+                    : `settings.${tab}.tab`
+                }
                 onClick={() => setActiveTab(tab)}
                 className="flex-1 h-11 rounded-full text-sm font-bold transition-all"
                 style={{
@@ -246,7 +322,11 @@ export default function SettingsPage({
                     : "none",
                 }}
               >
-                {tab === "vehicles" ? "Vehicles" : "Rates"}
+                {tab === "vehicles"
+                  ? "Vehicles"
+                  : tab === "rates"
+                    ? "Rates"
+                    : "Backup"}
               </button>
             );
           })}
@@ -353,13 +433,13 @@ export default function SettingsPage({
                 />
               </div>
 
-              {/* Loading Labors */}
+              {/* Loading Lebours */}
               <div>
                 <Label
                   className="text-[10px] font-bold uppercase tracking-widest"
                   style={{ color: "oklch(55% 0.06 145)" }}
                 >
-                  Loading Labors
+                  Loading Lebours
                 </Label>
                 {form.loadingLabors.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2 mb-2">
@@ -411,19 +491,19 @@ export default function SettingsPage({
                     className="text-[10px] mt-1.5 font-medium"
                     style={{ color: "oklch(52% 0.10 145)" }}
                   >
-                    নতুন নাম যোগ করলে Unloading-এ স্বয়ংক্রিয়ভাবে কপি হবে।
+                    New names are auto-copied to Unloading list.
                   </p>
                 )}
               </div>
 
-              {/* Unloading Labors */}
+              {/* Unloading Lebours */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <Label
                     className="text-[10px] font-bold uppercase tracking-widest"
                     style={{ color: "oklch(55% 0.06 145)" }}
                   >
-                    Unloading Labors
+                    Unloading Lebours
                   </Label>
                   {form.loadingLabors.length > 0 && (
                     <button
@@ -537,7 +617,7 @@ export default function SettingsPage({
                     className="text-xs font-medium"
                     style={{ color: "oklch(60% 0.07 145)" }}
                   >
-                    কোনো গাড়ি যোগ করা হয়নি।
+                    No vehicles added.
                   </p>
                 </motion.div>
               ) : (
@@ -558,7 +638,6 @@ export default function SettingsPage({
                             : "1.5px solid oklch(88% 0.05 145)",
                       }}
                     >
-                      {/* Top row: vehicle info + action buttons */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                           <div>
@@ -613,7 +692,6 @@ export default function SettingsPage({
                         </div>
                       </div>
 
-                      {/* Labor names below vehicle info */}
                       {((v.loadingLabors && v.loadingLabors.length > 0) ||
                         (v.unloadingLabors &&
                           v.unloadingLabors.length > 0)) && (
@@ -1009,6 +1087,156 @@ export default function SettingsPage({
               <Save size={16} />
               {ratesSaved ? "Saved!" : "Save Rates"}
             </Button>
+          </motion.div>
+        )}
+
+        {/* ===== BACKUP TAB ===== */}
+        {activeTab === "backup" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-4"
+          >
+            {/* Header info */}
+            <div
+              className="rounded-2xl bg-white p-5"
+              style={{ border: "1.5px solid oklch(88% 0.05 145)" }}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <DatabaseBackup
+                  size={18}
+                  style={{ color: "oklch(48% 0.18 145)" }}
+                />
+                <p
+                  className="text-sm font-extrabold"
+                  style={{ color: "oklch(28% 0.06 145)" }}
+                >
+                  Data Backup & Restore
+                </p>
+              </div>
+              <p
+                className="text-[11px]"
+                style={{ color: "oklch(52% 0.06 145)" }}
+              >
+                Backup all your data (Pending, Complete, Vehicles, Rates) and
+                Restore when needed.
+              </p>
+            </div>
+
+            {/* Download Backup */}
+            <div
+              className="rounded-2xl bg-white p-5 space-y-3"
+              style={{ border: "1.5px solid oklch(88% 0.10 145)" }}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className="h-3 w-3 rounded-full"
+                  style={{ background: "oklch(52% 0.20 145)" }}
+                />
+                <p
+                  className="text-sm font-extrabold"
+                  style={{ color: "oklch(28% 0.06 145)" }}
+                >
+                  Backup Download
+                </p>
+              </div>
+              <p
+                className="text-[11px]"
+                style={{ color: "oklch(52% 0.06 145)" }}
+              >
+                Export all data as a JSON file. Keep it in a safe place.
+              </p>
+              <Button
+                data-ocid="settings.backup_download_button"
+                onClick={handleBackupDownload}
+                className="w-full h-12 rounded-2xl text-sm font-extrabold flex items-center gap-2"
+                style={{ background: "oklch(50% 0.18 145)", color: "white" }}
+              >
+                <Download size={16} />
+                Backup Download
+              </Button>
+            </div>
+
+            {/* Restore Backup */}
+            <div
+              className="rounded-2xl bg-white p-5 space-y-3"
+              style={{ border: "1.5px solid oklch(88% 0.08 240)" }}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className="h-3 w-3 rounded-full"
+                  style={{ background: "oklch(52% 0.18 240)" }}
+                />
+                <p
+                  className="text-sm font-extrabold"
+                  style={{ color: "oklch(28% 0.06 145)" }}
+                >
+                  Restore Backup
+                </p>
+              </div>
+              <p
+                className="text-[11px]"
+                style={{ color: "oklch(52% 0.06 145)" }}
+              >
+                Restore all data from a previously downloaded backup JSON file.
+                Restore will replace current data.
+              </p>
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                data-ocid="settings.backup_file_input"
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={handleRestoreFile}
+              />
+
+              <Button
+                data-ocid="settings.backup_restore_button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full h-12 rounded-2xl text-sm font-extrabold flex items-center gap-2"
+                style={{ background: "oklch(50% 0.18 240)", color: "white" }}
+              >
+                <Upload size={16} />
+                Restore Backup
+              </Button>
+
+              {/* Status messages */}
+              <AnimatePresence>
+                {restoreStatus === "success" && (
+                  <motion.div
+                    data-ocid="settings.backup.success_state"
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="text-xs font-semibold text-center py-3 px-4 rounded-xl"
+                    style={{
+                      background: "oklch(92% 0.10 160)",
+                      color: "oklch(32% 0.14 160)",
+                    }}
+                  >
+                    ✅ {restoreMsg}
+                  </motion.div>
+                )}
+                {restoreStatus === "error" && (
+                  <motion.div
+                    data-ocid="settings.backup.error_state"
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="text-xs font-semibold text-center py-3 px-4 rounded-xl"
+                    style={{
+                      background: "oklch(94% 0.08 25)",
+                      color: "oklch(42% 0.18 25)",
+                    }}
+                  >
+                    ❌ {restoreMsg}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </motion.div>
         )}
       </main>

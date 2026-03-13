@@ -29,6 +29,7 @@ interface Props {
   onBack: () => void;
   onDelete: (id: string) => void;
   onComplete: (completed: CompleteDelivery) => void;
+  onEdit?: (delivery: PendingDelivery) => void;
 }
 
 function buildPendingHtml(deliveries: PendingDelivery[]): string {
@@ -94,29 +95,75 @@ function buildPendingHtml(deliveries: PendingDelivery[]): string {
   <meta charset="utf-8">
   <title>SAHA Pending List</title>
   <style>
+    @page { size: A4 portrait; margin: 1.5cm 1cm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f9fafb; color: #111827; padding: 24px; }
-    @media print {
-      body { background: white; padding: 16px; }
-      @page { margin: 1cm; }
-    }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #111827; width: 210mm; max-width: 210mm; }
+    @media print { body { background: white; } .page-break { page-break-before: always; } }
+    @media screen { body { padding: 20px; background: #f3f4f6; } .content { background: white; max-width: 210mm; margin: 0 auto; padding: 20px; } }
   </style>
 </head>
 <body>
-  <div style="max-width:600px;margin:0 auto">
+  <div class="content">
     <div style="margin-bottom:20px">
       <h1 style="font-size:20px;font-weight:900;color:#14532d;letter-spacing:-0.5px">SAHA</h1>
       <h2 style="font-size:15px;font-weight:700;color:#166534;margin-top:2px">Pending Delivery List</h2>
-      <p style="font-size:12px;color:#6b7280;margin-top:6px">মোট পেন্ডিং: <strong>${deliveries.length} টি</strong></p>
+      <p style="font-size:12px;color:#6b7280;margin-top:6px">Total Pending: <strong>${deliveries.length}</strong></p>
       <div style="height:2px;background:linear-gradient(to right,#16a34a,#86efac);border-radius:99px;margin-top:10px"></div>
     </div>
-    ${cards || "<p style='color:#9ca3af;text-align:center;padding:40px 0'>কোনো পেন্ডিং ডেলিভারি নেই</p>"}
+    ${cards || "<p style='color:#9ca3af;text-align:center;padding:40px 0'>No pending deliveries</p>"}
     <div style="text-align:center;margin-top:24px;padding-top:16px;border-top:1px solid #e5e7eb">
       <p style="font-size:11px;color:#9ca3af">SAHA Business Suite</p>
     </div>
   </div>
 </body>
 </html>`;
+}
+
+function AddBrickRow({
+  onAdd,
+}: { onAdd: (type: string, qty: number) => void }) {
+  const [type, setType] = useState("");
+  const [qty, setQty] = useState("");
+  return (
+    <div className="flex gap-2 items-center">
+      <input
+        type="text"
+        placeholder="Brick type"
+        value={type}
+        onChange={(e) => setType(e.target.value)}
+        className="flex-1 px-3 py-2 rounded-xl text-xs outline-none"
+        style={{
+          background: "oklch(96% 0.03 145)",
+          border: "1.5px solid oklch(85% 0.07 145)",
+        }}
+      />
+      <input
+        type="number"
+        placeholder="Quantity"
+        value={qty}
+        onChange={(e) => setQty(e.target.value)}
+        className="w-20 px-2 py-2 rounded-xl text-xs outline-none text-right"
+        style={{
+          background: "oklch(96% 0.03 145)",
+          border: "1.5px solid oklch(85% 0.07 145)",
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => {
+          if (type && qty) {
+            onAdd(type, Number(qty));
+            setType("");
+            setQty("");
+          }
+        }}
+        className="px-3 py-2 rounded-xl text-xs font-bold text-white"
+        style={{ background: "oklch(48% 0.18 145)" }}
+      >
+        +
+      </button>
+    </div>
+  );
 }
 
 export default function PendingList({
@@ -126,9 +173,13 @@ export default function PendingList({
   onBack,
   onDelete,
   onComplete,
+  onEdit,
 }: Props) {
   const [completingDelivery, setCompletingDelivery] =
     useState<PendingDelivery | null>(null);
+  const [editDelivery, setEditDelivery] = useState<PendingDelivery | null>(
+    null,
+  );
 
   function handlePrint() {
     const html = buildPendingHtml(deliveries);
@@ -306,7 +357,7 @@ export default function PendingList({
             className="text-[11px] font-medium"
             style={{ color: "oklch(58% 0.08 145)" }}
           >
-            {deliveries.length} টি পেন্ডিং ডেলিভারি
+            {deliveries.length} Pending Deliveries
           </p>
         </div>
         <div className="flex gap-2">
@@ -366,7 +417,7 @@ export default function PendingList({
                 className="text-base font-bold"
                 style={{ color: "oklch(38% 0.08 145)" }}
               >
-                কোনো পেন্ডিং ডেলিভারি নেই
+                No pending deliveries
               </p>
               <p
                 className="text-xs mt-1"
@@ -472,12 +523,13 @@ export default function PendingList({
                     className="flex-shrink-0"
                     style={{ color: "oklch(55% 0.12 145)" }}
                   />
-                  <p
-                    className="text-xs font-medium"
-                    style={{ color: "oklch(45% 0.06 145)" }}
+                  <a
+                    href={`tel:${d.phoneNumber}`}
+                    className="text-xs font-medium underline"
+                    style={{ color: "oklch(35% 0.18 210)" }}
                   >
                     {d.phoneNumber}
-                  </p>
+                  </a>
                 </div>
               )}
 
@@ -510,6 +562,7 @@ export default function PendingList({
                 <button
                   type="button"
                   data-ocid={`pending-list.edit_button.${idx + 1}`}
+                  onClick={() => setEditDelivery({ ...d })}
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
                   style={{
                     background: "oklch(94% 0.02 145)",
@@ -553,6 +606,363 @@ export default function PendingList({
           ))
         )}
       </main>
+
+      {/* Edit Pending Delivery Modal */}
+      {editDelivery && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center"
+          style={{ background: "rgba(0,0,0,0.45)" }}
+        >
+          <div
+            data-ocid="pending-list.modal"
+            className="bg-white rounded-t-3xl px-5 pt-5 pb-8 w-full max-w-[430px] shadow-xl overflow-y-auto"
+            style={{ maxHeight: "85vh" }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3
+                className="text-base font-extrabold"
+                style={{ color: "oklch(28% 0.06 145)" }}
+              >
+                Edit Pending
+              </h3>
+              <button
+                type="button"
+                data-ocid="pending-list.close_button"
+                onClick={() => setEditDelivery(null)}
+                className="text-xs font-bold px-3 py-1.5 rounded-lg"
+                style={{
+                  background: "oklch(93% 0.05 145)",
+                  color: "oklch(45% 0.12 145)",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+            <div className="space-y-3">
+              {/* Date */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Date
+                </p>
+                <input
+                  type="date"
+                  data-ocid="pending-list.input"
+                  value={editDelivery.date}
+                  onChange={(e) =>
+                    setEditDelivery({ ...editDelivery, date: e.target.value })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "oklch(96% 0.03 145)",
+                    border: "1.5px solid oklch(85% 0.07 145)",
+                  }}
+                />
+              </div>
+              {/* Customer Name */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Customer Name
+                </p>
+                <input
+                  type="text"
+                  data-ocid="pending-list.input"
+                  value={editDelivery.customerName}
+                  onChange={(e) =>
+                    setEditDelivery({
+                      ...editDelivery,
+                      customerName: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "oklch(96% 0.03 145)",
+                    border: "1.5px solid oklch(85% 0.07 145)",
+                  }}
+                />
+              </div>
+              {/* Invoice Number */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Invoice Number (Optional)
+                </p>
+                <input
+                  type="text"
+                  data-ocid="pending-list.input"
+                  value={editDelivery.invoiceNumber ?? ""}
+                  onChange={(e) =>
+                    setEditDelivery({
+                      ...editDelivery,
+                      invoiceNumber: e.target.value || undefined,
+                    })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "oklch(96% 0.03 145)",
+                    border: "1.5px solid oklch(85% 0.07 145)",
+                  }}
+                />
+              </div>
+              {/* Address */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Address
+                </p>
+                <input
+                  type="text"
+                  data-ocid="pending-list.input"
+                  value={editDelivery.address}
+                  onChange={(e) =>
+                    setEditDelivery({
+                      ...editDelivery,
+                      address: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "oklch(96% 0.03 145)",
+                    border: "1.5px solid oklch(85% 0.07 145)",
+                  }}
+                />
+              </div>
+              {/* Phone */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Phone Number (Optional)
+                </p>
+                <input
+                  type="text"
+                  data-ocid="pending-list.input"
+                  value={editDelivery.phoneNumber ?? ""}
+                  onChange={(e) =>
+                    setEditDelivery({
+                      ...editDelivery,
+                      phoneNumber: e.target.value || undefined,
+                    })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "oklch(96% 0.03 145)",
+                    border: "1.5px solid oklch(85% 0.07 145)",
+                  }}
+                />
+              </div>
+              {/* Due Amount */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Due Amount (Optional)
+                </p>
+                <input
+                  type="number"
+                  data-ocid="pending-list.input"
+                  value={editDelivery.dueAmount ?? ""}
+                  onChange={(e) =>
+                    setEditDelivery({
+                      ...editDelivery,
+                      dueAmount: e.target.value
+                        ? Number(e.target.value)
+                        : undefined,
+                    })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "oklch(96% 0.03 145)",
+                    border: "1.5px solid oklch(85% 0.07 145)",
+                  }}
+                />
+              </div>
+              {/* Location Type */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Location Type
+                </p>
+                <div className="flex gap-2">
+                  {(["Local", "Outside"] as const).map((lt) => (
+                    <button
+                      key={lt}
+                      type="button"
+                      data-ocid="pending-list.toggle"
+                      onClick={() =>
+                        setEditDelivery({ ...editDelivery, locationType: lt })
+                      }
+                      className="flex-1 py-2 rounded-xl text-sm font-bold transition-all"
+                      style={{
+                        background:
+                          editDelivery.locationType === lt
+                            ? "oklch(48% 0.18 145)"
+                            : "oklch(96% 0.03 145)",
+                        color:
+                          editDelivery.locationType === lt
+                            ? "white"
+                            : "oklch(45% 0.1 145)",
+                        border: `1.5px solid ${editDelivery.locationType === lt ? "oklch(42% 0.18 145)" : "oklch(85% 0.07 145)"}`,
+                      }}
+                    >
+                      {lt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Bricks */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Brick Quantity
+                </p>
+                <div className="space-y-2">
+                  {editDelivery.bricks.map((b, bi) => (
+                    <div
+                      key={`${b.type}-${bi}`}
+                      className="flex gap-2 items-center"
+                    >
+                      <span
+                        className="text-xs font-semibold flex-1 px-3 py-2 rounded-xl"
+                        style={{
+                          background: "oklch(96% 0.03 145)",
+                          color: "oklch(38% 0.1 145)",
+                          border: "1.5px solid oklch(85% 0.07 145)",
+                        }}
+                      >
+                        {b.type}
+                      </span>
+                      <input
+                        type="number"
+                        value={b.quantity}
+                        data-ocid="pending-list.input"
+                        onChange={(e) => {
+                          const newBricks = editDelivery.bricks.map((br, i) =>
+                            i === bi
+                              ? { ...br, quantity: Number(e.target.value) }
+                              : br,
+                          );
+                          const totalBricks = newBricks.reduce(
+                            (s, br) => s + br.quantity,
+                            0,
+                          );
+                          setEditDelivery({
+                            ...editDelivery,
+                            bricks: newBricks,
+                            totalBricks,
+                          });
+                        }}
+                        className="w-24 px-3 py-2 rounded-xl text-sm outline-none text-right"
+                        style={{
+                          background: "oklch(96% 0.03 145)",
+                          border: "1.5px solid oklch(85% 0.07 145)",
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newBricks = editDelivery.bricks.filter(
+                            (_, i) => i !== bi,
+                          );
+                          setEditDelivery({
+                            ...editDelivery,
+                            bricks: newBricks,
+                            totalBricks: newBricks.reduce(
+                              (s, br) => s + br.quantity,
+                              0,
+                            ),
+                          });
+                        }}
+                        className="text-red-400 font-bold px-2 py-1 rounded-lg text-xs"
+                        style={{ background: "oklch(96% 0.04 15)" }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  {/* Add new brick row */}
+                  <AddBrickRow
+                    onAdd={(type, qty) => {
+                      const newBricks = [
+                        ...editDelivery.bricks,
+                        { type, quantity: qty },
+                      ];
+                      setEditDelivery({
+                        ...editDelivery,
+                        bricks: newBricks,
+                        totalBricks: newBricks.reduce(
+                          (s, b) => s + b.quantity,
+                          0,
+                        ),
+                      });
+                    }}
+                  />
+                </div>
+                <div
+                  className="mt-2 text-xs font-bold"
+                  style={{ color: "oklch(38% 0.1 145)" }}
+                >
+                  Total Bricks: {editDelivery.totalBricks}
+                </div>
+              </div>
+              {/* Safety Quantity */}
+              <div>
+                <p
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  Safety Bats Quantity (Optional)
+                </p>
+                <input
+                  type="number"
+                  data-ocid="pending-list.input"
+                  value={editDelivery.safetyQuantity ?? ""}
+                  onChange={(e) =>
+                    setEditDelivery({
+                      ...editDelivery,
+                      safetyQuantity: e.target.value
+                        ? Number(e.target.value)
+                        : undefined,
+                    })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "oklch(96% 0.03 145)",
+                    border: "1.5px solid oklch(85% 0.07 145)",
+                  }}
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              data-ocid="pending-list.save_button"
+              onClick={() => {
+                onEdit?.(editDelivery);
+                setEditDelivery(null);
+              }}
+              className="w-full mt-5 py-3 rounded-xl font-bold text-white text-sm"
+              style={{ background: "oklch(48% 0.18 145)" }}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

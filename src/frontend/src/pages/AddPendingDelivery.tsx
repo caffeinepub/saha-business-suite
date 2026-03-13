@@ -69,10 +69,10 @@ export default function AddPendingDelivery({ onSave, onBack }: Props) {
 
   function handleSave() {
     setError("");
-    if (!date) return setError("তারিখ দিন।");
-    if (!customerName.trim()) return setError("গ্রাহকের নাম দিন।");
-    if (!address.trim()) return setError("ঠিকানা দিন।");
-    if (!locationType) return setError("লোকেশন টাইপ বেছে নিন।");
+    if (!date) return setError("Please enter date.");
+    if (!customerName.trim()) return setError("Please enter customer name.");
+    if (!address.trim()) return setError("Please enter address.");
+    if (!locationType) return setError("Please select location type.");
 
     const bricks: BrickSelection[] = Object.entries(selectedBricks).map(
       ([type, quantity]) => ({
@@ -131,7 +131,7 @@ export default function AddPendingDelivery({ onSave, onBack }: Props) {
             className="text-[11px] font-medium"
             style={{ color: "oklch(58% 0.08 145)" }}
           >
-            নতুন পেন্ডিং ডেলিভারি
+            New Pending Delivery
           </p>
         </div>
       </header>
@@ -173,7 +173,7 @@ export default function AddPendingDelivery({ onSave, onBack }: Props) {
               <Input
                 data-ocid="add-pending.input"
                 type="text"
-                placeholder="গ্রাহকের নাম লিখুন"
+                placeholder="Customer name"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 className="mt-1 h-11 rounded-xl border-2 text-sm"
@@ -196,7 +196,7 @@ export default function AddPendingDelivery({ onSave, onBack }: Props) {
               <Input
                 data-ocid="add-pending.input"
                 type="text"
-                placeholder="ইনভোয়েস নম্বর লিখুন"
+                placeholder="Invoice number"
                 value={invoiceNumber}
                 onChange={(e) => setInvoiceNumber(e.target.value)}
                 className="mt-1 h-11 rounded-xl border-2 text-sm"
@@ -213,7 +213,7 @@ export default function AddPendingDelivery({ onSave, onBack }: Props) {
               <Input
                 data-ocid="add-pending.input"
                 type="text"
-                placeholder="ঠিকানা লিখুন"
+                placeholder="Address"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 className="mt-1 h-11 rounded-xl border-2 text-sm"
@@ -236,7 +236,7 @@ export default function AddPendingDelivery({ onSave, onBack }: Props) {
               <Input
                 data-ocid="add-pending.input"
                 type="tel"
-                placeholder="ফোন নম্বর লিখুন"
+                placeholder="Phone number"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 className="mt-1 h-11 rounded-xl border-2 text-sm"
@@ -259,7 +259,7 @@ export default function AddPendingDelivery({ onSave, onBack }: Props) {
               <Input
                 data-ocid="add-pending.input"
                 type="number"
-                placeholder="০"
+                placeholder="0"
                 value={dueAmount}
                 onChange={(e) => setDueAmount(e.target.value)}
                 className="mt-1 h-11 rounded-xl border-2 text-sm"
@@ -477,7 +477,7 @@ export default function AddPendingDelivery({ onSave, onBack }: Props) {
             boxShadow: "0 6px 20px oklch(50% 0.18 145 / 0.35)",
           }}
         >
-          সেভ করুন — Save
+          Save
         </Button>
       </div>
     </div>
