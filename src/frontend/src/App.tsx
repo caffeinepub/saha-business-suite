@@ -21,6 +21,7 @@ import AddPendingDelivery from "./pages/AddPendingDelivery";
 import CompleteList from "./pages/CompleteList";
 import DirectDelivery from "./pages/DirectDelivery";
 import PendingList from "./pages/PendingList";
+import ReportPage from "./pages/ReportPage";
 import SettingsPage from "./pages/SettingsPage";
 import type {
   CompleteDelivery,
@@ -93,8 +94,11 @@ const DEFAULT_RATES: RatesConfig = {
   tractorLocalRate: "",
   tractorOutsideRate: "",
   tractorSafeBatsRate: "",
-  wheelStandardRate: "",
+  wheelLocalRate: "",
+  wheelOutsideRate: "",
   wheelSafeBatsRate: "",
+  batsConversionInput: "100",
+  batsConversionOutput: "120",
 };
 
 export default function App() {
@@ -183,6 +187,20 @@ export default function App() {
     );
   }
 
+  if (activeTab === "reports") {
+    return (
+      <div className={WRAPPER}>
+        <div className={INNER}>
+          <ReportPage
+            pendingDeliveries={pendingDeliveries}
+            completeDeliveries={completeDeliveries}
+            onBack={() => setActiveTab("home")}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (subView === "pending-list") {
     return (
       <div className={WRAPPER}>
@@ -215,6 +233,14 @@ export default function App() {
           <CompleteList
             deliveries={completeDeliveries}
             onBack={() => setSubView(null)}
+            onDelete={(id) =>
+              setCompleteDeliveries((prev) => prev.filter((d) => d.id !== id))
+            }
+            onEdit={(updated) =>
+              setCompleteDeliveries((prev) =>
+                prev.map((d) => (d.id === updated.id ? updated : d)),
+              )
+            }
           />
         </div>
       </div>

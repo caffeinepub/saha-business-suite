@@ -88,7 +88,10 @@ export default function CompletePendingPage({
           ? Number(rates.tractorLocalRate) || 0
           : Number(rates.tractorOutsideRate) || 0;
       }
-      return Number(rates.wheelStandardRate) || 0;
+      // 12 Wheel
+      return delivery.locationType === "Local"
+        ? Number(rates.wheelLocalRate) || 0
+        : Number(rates.wheelOutsideRate) || 0;
     })();
     const safeBatsRate =
       selectedType === "Tractor"
@@ -101,13 +104,15 @@ export default function CompletePendingPage({
       delivery.safetyQuantity && safeBatsRate > 0
         ? (delivery.safetyQuantity * safeBatsRate) / 100
         : 0;
+    const loadingShare = totalAmount / 2;
+    const unloadingShare = totalAmount / 2;
     const perLoadingLaborAmount =
-      loadingLabors.length > 0 && totalAmount > 0
-        ? Math.round(totalAmount / loadingLabors.length)
+      loadingLabors.length > 0 && loadingShare > 0
+        ? Math.round(loadingShare / loadingLabors.length)
         : 0;
     const perUnloadingLaborAmount =
-      unloadingLabors.length > 0 && totalAmount > 0
-        ? Math.round(totalAmount / unloadingLabors.length)
+      unloadingLabors.length > 0 && unloadingShare > 0
+        ? Math.round(unloadingShare / unloadingLabors.length)
         : 0;
 
     const completed: CompleteDelivery = {
@@ -134,7 +139,10 @@ export default function CompletePendingPage({
         ? Number(rates.tractorLocalRate) || 0
         : Number(rates.tractorOutsideRate) || 0;
     }
-    return Number(rates.wheelStandardRate) || 0;
+    // 12 Wheel
+    return delivery.locationType === "Local"
+      ? Number(rates.wheelLocalRate) || 0
+      : Number(rates.wheelOutsideRate) || 0;
   })();
   const safeBatsRate =
     selectedType === "Tractor"
@@ -143,17 +151,19 @@ export default function CompletePendingPage({
   const totalBricks = delivery.totalBricks || 0;
   const totalAmount =
     totalBricks > 0 && autoRate > 0 ? (totalBricks * autoRate) / 1000 : 0;
+  const loadingShare = totalAmount / 2;
+  const unloadingShare = totalAmount / 2;
   const safeBatsAmount =
     delivery.safetyQuantity && safeBatsRate > 0
       ? (delivery.safetyQuantity * safeBatsRate) / 100
       : 0;
   const perLoadingLabor =
-    loadingLabors.length > 0 && totalAmount > 0
-      ? totalAmount / loadingLabors.length
+    loadingLabors.length > 0 && loadingShare > 0
+      ? loadingShare / loadingLabors.length
       : 0;
   const perUnloadingLabor =
-    unloadingLabors.length > 0 && totalAmount > 0
-      ? totalAmount / unloadingLabors.length
+    unloadingLabors.length > 0 && unloadingShare > 0
+      ? unloadingShare / unloadingLabors.length
       : 0;
 
   return (
@@ -539,11 +549,43 @@ export default function CompletePendingPage({
                   ৳{Math.round(totalAmount).toLocaleString()}
                 </p>
               </div>
+              {loadingShare > 0 && (
+                <div className="rounded-xl p-3 bg-white text-center">
+                  <p
+                    className="text-[10px] font-semibold uppercase tracking-wide"
+                    style={{ color: "oklch(58% 0.08 145)" }}
+                  >
+                    Loading Share
+                  </p>
+                  <p
+                    className="text-lg font-extrabold font-display mt-0.5"
+                    style={{ color: "oklch(35% 0.16 145)" }}
+                  >
+                    ৳{Math.round(loadingShare).toLocaleString()}
+                  </p>
+                </div>
+              )}
+              {unloadingShare > 0 && (
+                <div className="rounded-xl p-3 bg-white text-center">
+                  <p
+                    className="text-[10px] font-semibold uppercase tracking-wide"
+                    style={{ color: "oklch(58% 0.08 240)" }}
+                  >
+                    Unloading Share
+                  </p>
+                  <p
+                    className="text-lg font-extrabold font-display mt-0.5"
+                    style={{ color: "oklch(35% 0.16 240)" }}
+                  >
+                    ৳{Math.round(unloadingShare).toLocaleString()}
+                  </p>
+                </div>
+              )}
               {perLoadingLabor > 0 && (
                 <div className="rounded-xl p-3 bg-white text-center">
                   <p
                     className="text-[10px] font-semibold uppercase tracking-wide"
-                    style={{ color: "oklch(58% 0.08 270)" }}
+                    style={{ color: "oklch(58% 0.08 145)" }}
                   >
                     Per Loading Labor
                   </p>
@@ -559,7 +601,7 @@ export default function CompletePendingPage({
                 <div className="rounded-xl p-3 bg-white text-center">
                   <p
                     className="text-[10px] font-semibold uppercase tracking-wide"
-                    style={{ color: "oklch(58% 0.08 270)" }}
+                    style={{ color: "oklch(58% 0.08 240)" }}
                   >
                     Per Unloading Labor
                   </p>

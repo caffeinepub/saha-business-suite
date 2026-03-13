@@ -29,8 +29,11 @@ const DEFAULT_RATES: RatesConfig = {
   tractorLocalRate: "",
   tractorOutsideRate: "",
   tractorSafeBatsRate: "",
-  wheelStandardRate: "",
+  wheelLocalRate: "",
+  wheelOutsideRate: "",
   wheelSafeBatsRate: "",
+  batsConversionInput: "100",
+  batsConversionOutput: "120",
 };
 
 function emptyForm() {
@@ -810,34 +813,66 @@ export default function SettingsPage({
                   12 Wheel Rates (per 1000)
                 </p>
               </div>
-              <div>
-                <Label
-                  className="text-[10px] font-bold uppercase tracking-widest"
-                  style={{ color: "oklch(55% 0.06 145)" }}
-                >
-                  Standard Rate
-                </Label>
-                <div className="relative mt-2">
-                  <span
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-base"
-                    style={{ color: "oklch(60% 0.06 145)" }}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label
+                    className="text-[10px] font-bold uppercase tracking-widest"
+                    style={{ color: "oklch(55% 0.06 145)" }}
                   >
-                    ₹
-                  </span>
-                  <Input
-                    data-ocid="settings.input"
-                    type="number"
-                    placeholder="0"
-                    value={localRates.wheelStandardRate}
-                    onChange={(e) =>
-                      setLocalRates((r) => ({
-                        ...r,
-                        wheelStandardRate: e.target.value,
-                      }))
-                    }
-                    className="h-12 rounded-xl border-2 text-sm pl-8"
-                    style={{ borderColor: "oklch(85% 0.04 145)" }}
-                  />
+                    Local Rate
+                  </Label>
+                  <div className="relative mt-2">
+                    <span
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-base"
+                      style={{ color: "oklch(60% 0.06 145)" }}
+                    >
+                      ₹
+                    </span>
+                    <Input
+                      data-ocid="settings.input"
+                      type="number"
+                      placeholder="0"
+                      value={localRates.wheelLocalRate}
+                      onChange={(e) =>
+                        setLocalRates((r) => ({
+                          ...r,
+                          wheelLocalRate: e.target.value,
+                        }))
+                      }
+                      className="h-12 rounded-xl border-2 text-sm pl-8"
+                      style={{ borderColor: "oklch(85% 0.04 145)" }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label
+                    className="text-[10px] font-bold uppercase tracking-widest"
+                    style={{ color: "oklch(55% 0.06 145)" }}
+                  >
+                    Outside Rate
+                  </Label>
+                  <div className="relative mt-2">
+                    <span
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-base"
+                      style={{ color: "oklch(60% 0.06 145)" }}
+                    >
+                      ₹
+                    </span>
+                    <Input
+                      data-ocid="settings.input"
+                      type="number"
+                      placeholder="0"
+                      value={localRates.wheelOutsideRate}
+                      onChange={(e) =>
+                        setLocalRates((r) => ({
+                          ...r,
+                          wheelOutsideRate: e.target.value,
+                        }))
+                      }
+                      className="h-12 rounded-xl border-2 text-sm pl-8"
+                      style={{ borderColor: "oklch(85% 0.04 145)" }}
+                    />
+                  </div>
                 </div>
               </div>
               <div>
@@ -870,6 +905,93 @@ export default function SettingsPage({
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Sefery Bats Conversion */}
+            <div
+              className="rounded-2xl bg-white p-5 space-y-4"
+              style={{ border: "1.5px solid oklch(88% 0.05 55)" }}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className="h-3 w-3 rounded-full"
+                  style={{ background: "oklch(60% 0.18 55)" }}
+                />
+                <p
+                  className="text-sm font-extrabold"
+                  style={{ color: "oklch(28% 0.06 145)" }}
+                >
+                  Sefery Bats Conversion
+                </p>
+              </div>
+              <p
+                className="text-[11px]"
+                style={{ color: "oklch(50% 0.06 145)" }}
+              >
+                How many bricks equal a given number of Sefery Bats
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <Label
+                    className="text-[10px] font-bold uppercase tracking-widest"
+                    style={{ color: "oklch(55% 0.06 145)" }}
+                  >
+                    Sefery Bats
+                  </Label>
+                  <Input
+                    data-ocid="settings.input"
+                    type="number"
+                    placeholder="100"
+                    value={localRates.batsConversionInput}
+                    onChange={(e) =>
+                      setLocalRates((r) => ({
+                        ...r,
+                        batsConversionInput: e.target.value,
+                      }))
+                    }
+                    className="h-12 rounded-xl border-2 text-sm mt-2"
+                    style={{ borderColor: "oklch(85% 0.04 55)" }}
+                  />
+                </div>
+                <span
+                  className="text-lg font-bold mt-6"
+                  style={{ color: "oklch(55% 0.06 145)" }}
+                >
+                  =
+                </span>
+                <div className="flex-1">
+                  <Label
+                    className="text-[10px] font-bold uppercase tracking-widest"
+                    style={{ color: "oklch(55% 0.06 145)" }}
+                  >
+                    Bricks
+                  </Label>
+                  <Input
+                    data-ocid="settings.input"
+                    type="number"
+                    placeholder="120"
+                    value={localRates.batsConversionOutput}
+                    onChange={(e) =>
+                      setLocalRates((r) => ({
+                        ...r,
+                        batsConversionOutput: e.target.value,
+                      }))
+                    }
+                    className="h-12 rounded-xl border-2 text-sm mt-2"
+                    style={{ borderColor: "oklch(85% 0.04 55)" }}
+                  />
+                </div>
+              </div>
+              <p
+                className="text-xs font-semibold text-center py-2 rounded-xl"
+                style={{
+                  background: "oklch(94% 0.06 55)",
+                  color: "oklch(42% 0.14 55)",
+                }}
+              >
+                {localRates.batsConversionInput || "100"} Sefery Bats ={" "}
+                {localRates.batsConversionOutput || "120"} Bricks
+              </p>
             </div>
 
             <Button

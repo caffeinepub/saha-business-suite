@@ -32,8 +32,11 @@ export interface RatesConfig {
   tractorLocalRate: string;
   tractorOutsideRate: string;
   tractorSafeBatsRate: string;
-  wheelStandardRate: string;
+  wheelLocalRate: string;
+  wheelOutsideRate: string;
   wheelSafeBatsRate: string;
+  batsConversionInput: string;
+  batsConversionOutput: string;
 }
 
 export interface CompleteDelivery {

@@ -6,6 +6,8 @@ import {
   Layers,
   MapPin,
   PackageX,
+  Pencil,
+  Trash2,
   Truck,
   Users,
 } from "lucide-react";
@@ -16,6 +18,8 @@ import type { CompleteDelivery } from "../types/delivery";
 interface Props {
   deliveries: CompleteDelivery[];
   onBack: () => void;
+  onDelete?: (id: string) => void;
+  onEdit?: (delivery: CompleteDelivery) => void;
 }
 
 function formatDisplayDate(dateStr: string) {
@@ -25,11 +29,32 @@ function formatDisplayDate(dateStr: string) {
   return dateStr;
 }
 
-type LaborEntry = { name: string; amount: number };
+type MergedLabor = { name: string; amount: number };
 
-export default function CompleteList({ deliveries, onBack }: Props) {
+/** Merge loading + unloading: same person's amounts are summed */
+export function buildMergedLabors(d: CompleteDelivery): MergedLabor[] {
+  const map = new Map<string, number>();
+  for (const name of d.loadingLaborNames) {
+    map.set(name, (map.get(name) ?? 0) + (d.perLoadingLaborAmount ?? 0));
+  }
+  for (const name of d.unloadingLaborNames) {
+    map.set(name, (map.get(name) ?? 0) + (d.perUnloadingLaborAmount ?? 0));
+  }
+  return Array.from(map.entries()).map(([name, amount]) => ({ name, amount }));
+}
+
+export default function CompleteList({
+  deliveries,
+  onBack,
+  onDelete,
+  onEdit,
+}: Props) {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [editDelivery, setEditDelivery] = useState<CompleteDelivery | null>(
+    null,
+  );
 
   const filtered = deliveries.filter((d) => {
     if (fromDate && d.date < fromDate) return false;
@@ -37,89 +62,67 @@ export default function CompleteList({ deliveries, onBack }: Props) {
     return true;
   });
 
-  function buildLabors(d: CompleteDelivery): LaborEntry[] {
-    return [
-      ...d.loadingLaborNames.map((name) => ({
-        name,
-        amount: d.perLoadingLaborAmount || 0,
-      })),
-      ...d.unloadingLaborNames.map((name) => ({
-        name,
-        amount: d.perUnloadingLaborAmount || 0,
-      })),
-    ];
+  function handleDeleteConfirm(id: string) {
+    onDelete?.(id);
+    setDeleteConfirmId(null);
+  }
+
+  function handleEditSave() {
+    if (!editDelivery) return;
+    onEdit?.(editDelivery);
+    setEditDelivery(null);
   }
 
   function handleDownloadPDF() {
     const periodLabel =
       fromDate && toDate
-        ? `Period: ${formatDisplayDate(fromDate)} – ${formatDisplayDate(toDate)}`
+        ? `Period: ${formatDisplayDate(fromDate)} - ${formatDisplayDate(toDate)}`
         : fromDate
           ? `From: ${formatDisplayDate(fromDate)}`
           : toDate
             ? `To: ${formatDisplayDate(toDate)}`
             : "All Deliveries";
 
-    const cardsHtml = filtered
+    const rows = filtered
       .map((d) => {
-        const labors = buildLabors(d);
-        const laborHtml =
-          labors.length > 0
-            ? `<div class="labor-section">
-    <div class="labor-title">Labor Details</div>
-    <div class="labor-grid">
-      ${labors
-        .map(
-          (l) =>
-            `<div class="labor-item"><span class="labor-name">${l.name}</span><span class="labor-amount">${l.amount > 0 ? `\u09f3${l.amount.toLocaleString()}` : "\u2014"}</span></div>`,
-        )
-        .join("")}
-    </div>
-  </div>`
-            : "";
-        const amountBadge =
-          d.totalAmount && d.totalAmount > 0
-            ? `<span class="amount-badge">\u09f3${Math.round(d.totalAmount).toLocaleString()}</span>`
-            : "";
-        return `<div class="card">
-  <div class="card-header"><span class="customer">${d.customerName}</span>${amountBadge}</div>
-  <div class="meta"><span>Date: ${d.date}</span><span>Vehicle: ${d.vehicleNumber}</span><span>${d.totalBricks} Bricks</span><span>${d.locationType}</span></div>
-  ${laborHtml}
-  <div class="footer-row"><span>Address: ${d.address}</span><span>Type: ${d.locationType}</span></div>
-</div>`;
+        const labors = buildMergedLabors(d);
+        const laborHtml = labors
+          .map(
+            (l) =>
+              `<div style="display:inline-block;width:48%;margin:1%;padding:4px 8px;background:#f0faf0;border:1px solid #c8e6c9;border-radius:6px;font-size:11px">
+                <span>${l.name}</span>
+                <span style="float:right;color:#2e7d32;font-weight:700">${l.amount > 0 ? `৳${l.amount.toFixed(2)}` : "—"}</span>
+              </div>`,
+          )
+          .join("");
+        return `
+          <div style="background:#fff;border:1.5px solid #c8e6c9;border-radius:12px;padding:14px;margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <strong style="font-size:14px;color:#1b5e20">${d.customerName}</strong>
+              ${d.totalAmount && d.totalAmount > 0 ? `<span style="background:#e8f5e9;color:#2e7d32;font-weight:700;padding:3px 10px;border-radius:20px">৳${Math.round(d.totalAmount).toLocaleString()}</span>` : ""}
+            </div>
+            <div style="font-size:11px;color:#666;margin:4px 0">${d.date} &nbsp;|&nbsp; ${d.vehicleNumber} &nbsp;|&nbsp; ${d.totalBricks} Bricks &nbsp;|&nbsp; ${d.locationType}</div>
+            <div style="font-size:11px;color:#888;margin-bottom:8px">${d.address}</div>
+            ${labors.length > 0 ? `<div style="border-top:1px solid #e8f5e9;padding-top:8px">${laborHtml}</div>` : ""}
+          </div>`;
       })
       .join("");
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8" /><title>Complete Delivery List \u2014 SAHA</title>
-<style>
-  body { font-family: Arial, sans-serif; padding: 20px; color: #222; }
-  h1 { font-size: 20px; margin-bottom: 4px; }
-  .subtitle { font-size: 12px; color: #666; margin-bottom: 16px; }
-  .card { border: 1.5px solid #ddd; border-radius: 10px; padding: 14px; margin-bottom: 14px; page-break-inside: avoid; }
-  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-  .customer { font-size: 16px; font-weight: bold; }
-  .amount-badge { background: #e6f4ea; color: #1a7a38; font-weight: bold; padding: 3px 10px; border-radius: 20px; font-size: 13px; }
-  .meta { font-size: 11px; color: #555; margin-bottom: 8px; display: flex; gap: 10px; flex-wrap: wrap; }
-  .labor-section { margin-top: 8px; }
-  .labor-title { font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #555; margin-bottom: 6px; }
-  .labor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .labor-item { border: 1px solid #ddd; border-radius: 6px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
-  .labor-name { font-weight: 500; }
-  .labor-amount { font-weight: bold; color: #1a7a38; }
-  .footer-row { display: flex; justify-content: space-between; font-size: 11px; color: #666; margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; }
-  @media print { body { padding: 10px; } }
-</style></head><body>
-<h1>SAHA \u2014 Complete Delivery List</h1>
-<div class="subtitle">${periodLabel} &nbsp;|&nbsp; Total: ${filtered.length} deliveries</div>
-${cardsHtml}
-</body></html>`;
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>SAHA Complete Deliveries</title>
+      <style>body{font-family:sans-serif;margin:20px;color:#222}@media print{body{margin:0}}</style>
+      </head><body>
+      <h2 style="color:#1b5e20;margin-bottom:4px">SAHA - Complete Delivery List</h2>
+      <p style="color:#666;font-size:13px;margin-bottom:16px">${periodLabel} &nbsp;|&nbsp; Total: ${filtered.length} deliveries</p>
+      ${rows}
+      <p style="color:#aaa;font-size:11px;text-align:center;margin-top:24px">SAHA Business Suite</p>
+      </body></html>`;
 
     const win = window.open("", "_blank");
     if (win) {
       win.document.write(html);
       win.document.close();
       win.focus();
-      setTimeout(() => win.print(), 500);
+      win.print();
     }
   }
 
@@ -259,7 +262,7 @@ ${cardsHtml}
           </motion.div>
         ) : (
           filtered.map((d, idx) => {
-            const allLabors = buildLabors(d);
+            const mergedLabors = buildMergedLabors(d);
 
             return (
               <motion.div
@@ -273,7 +276,7 @@ ${cardsHtml}
               >
                 {/* Top row */}
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p
                         className="text-base font-extrabold"
@@ -317,25 +320,54 @@ ${cardsHtml}
                       </span>
                     </div>
                   </div>
-                  <Badge
-                    className="rounded-full text-[10px] font-bold px-2.5 py-0.5 flex-shrink-0"
-                    style={{
-                      background:
-                        d.locationType === "Local"
-                          ? "oklch(92% 0.1 145)"
-                          : "oklch(91% 0.08 55)",
-                      color:
-                        d.locationType === "Local"
-                          ? "oklch(38% 0.18 145)"
-                          : "oklch(40% 0.16 55)",
-                    }}
-                  >
-                    {d.locationType}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1.5">
+                    <Badge
+                      className="rounded-full text-[10px] font-bold px-2.5 py-0.5 flex-shrink-0"
+                      style={{
+                        background:
+                          d.locationType === "Local"
+                            ? "oklch(92% 0.1 145)"
+                            : "oklch(91% 0.08 55)",
+                        color:
+                          d.locationType === "Local"
+                            ? "oklch(38% 0.18 145)"
+                            : "oklch(40% 0.16 55)",
+                      }}
+                    >
+                      {d.locationType}
+                    </Badge>
+                    {/* Edit / Delete buttons */}
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        data-ocid={`complete-list.edit_button.${idx + 1}`}
+                        onClick={() => setEditDelivery({ ...d })}
+                        className="h-7 w-7 flex items-center justify-center rounded-lg transition-colors"
+                        style={{
+                          background: "oklch(94% 0.06 220)",
+                          color: "oklch(40% 0.18 220)",
+                        }}
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        data-ocid={`complete-list.delete_button.${idx + 1}`}
+                        onClick={() => setDeleteConfirmId(d.id)}
+                        className="h-7 w-7 flex items-center justify-center rounded-lg transition-colors"
+                        style={{
+                          background: "oklch(94% 0.06 25)",
+                          color: "oklch(42% 0.18 25)",
+                        }}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Labor Details */}
-                {allLabors.length > 0 && (
+                {/* Labor Details - merged, no duplicates */}
+                {mergedLabors.length > 0 && (
                   <div
                     className="mt-3 pt-3"
                     style={{ borderTop: "1px solid oklch(93% 0.04 145)" }}
@@ -353,7 +385,7 @@ ${cardsHtml}
                       </p>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      {allLabors.map((labor, li) => (
+                      {mergedLabors.map((labor, li) => (
                         <div
                           // biome-ignore lint/suspicious/noArrayIndexKey: stable index
                           key={`labor-${li}`}
@@ -374,7 +406,7 @@ ${cardsHtml}
                             style={{ color: "oklch(32% 0.16 145)" }}
                           >
                             {labor.amount > 0
-                              ? `৳${labor.amount.toLocaleString()}`
+                              ? `৳${labor.amount.toFixed(2)}`
                               : "—"}
                           </span>
                         </div>
@@ -385,7 +417,7 @@ ${cardsHtml}
 
                 {/* Footer */}
                 <div
-                  className="flex items-center justify-between pt-2.5 mt-2 flex-wrap gap-1"
+                  className="flex items-center pt-2.5 mt-2"
                   style={{ borderTop: "1px solid oklch(93% 0.04 145)" }}
                 >
                   <div className="flex items-center gap-1">
@@ -400,20 +432,185 @@ ${cardsHtml}
                       {d.address}
                     </span>
                   </div>
-                  {d.dueAmount !== undefined && (
-                    <span
-                      className="text-[11px] font-bold"
-                      style={{ color: "oklch(42% 0.14 25)" }}
-                    >
-                      Due: ৳{d.dueAmount.toLocaleString()}
-                    </span>
-                  )}
                 </div>
               </motion.div>
             );
           })
         )}
       </main>
+
+      {/* Delete Confirm Modal */}
+      {deleteConfirmId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.45)" }}
+        >
+          <motion.div
+            data-ocid="complete-list.dialog"
+            initial={{ scale: 0.93, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-2xl p-6 mx-5 shadow-xl w-full max-w-[340px]"
+          >
+            <h3
+              className="text-base font-extrabold mb-1"
+              style={{ color: "oklch(28% 0.06 145)" }}
+            >
+              ডিলিট করবেন?
+            </h3>
+            <p
+              className="text-sm mb-5"
+              style={{ color: "oklch(55% 0.05 145)" }}
+            >
+              এই ডেলিভারি রেকর্ড স্থায়ীভাবে মুছে যাবে।
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                data-ocid="complete-list.cancel_button"
+                onClick={() => setDeleteConfirmId(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+                style={{
+                  background: "oklch(94% 0.04 145)",
+                  color: "oklch(40% 0.1 145)",
+                }}
+              >
+                বাতিল
+              </button>
+              <button
+                type="button"
+                data-ocid="complete-list.confirm_button"
+                onClick={() => handleDeleteConfirm(deleteConfirmId)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white"
+                style={{ background: "oklch(42% 0.18 25)" }}
+              >
+                ডিলিট
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editDelivery && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center"
+          style={{ background: "rgba(0,0,0,0.45)" }}
+        >
+          <motion.div
+            data-ocid="complete-list.modal"
+            initial={{ y: 60, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="bg-white rounded-t-3xl px-5 pt-5 pb-8 w-full max-w-[430px] shadow-xl"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3
+                className="text-base font-extrabold"
+                style={{ color: "oklch(28% 0.06 145)" }}
+              >
+                ডেলিভারি এডিট করুন
+              </h3>
+              <button
+                type="button"
+                data-ocid="complete-list.close_button"
+                onClick={() => setEditDelivery(null)}
+                className="text-xs font-bold px-3 py-1.5 rounded-lg"
+                style={{
+                  background: "oklch(93% 0.05 145)",
+                  color: "oklch(45% 0.12 145)",
+                }}
+              >
+                বাতিল
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label
+                  htmlFor="edit-date"
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  তারিখ
+                </label>
+                <input
+                  type="date"
+                  id="edit-date"
+                  data-ocid="complete-list.input"
+                  value={editDelivery.date}
+                  onChange={(e) =>
+                    setEditDelivery({ ...editDelivery, date: e.target.value })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "oklch(96% 0.03 145)",
+                    border: "1.5px solid oklch(85% 0.07 145)",
+                  }}
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="edit-customer"
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  গ্রাহকের নাম
+                </label>
+                <input
+                  type="text"
+                  id="edit-customer"
+                  data-ocid="complete-list.input"
+                  value={editDelivery.customerName}
+                  onChange={(e) =>
+                    setEditDelivery({
+                      ...editDelivery,
+                      customerName: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "oklch(96% 0.03 145)",
+                    border: "1.5px solid oklch(85% 0.07 145)",
+                  }}
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="edit-address"
+                  className="text-[11px] font-bold uppercase tracking-wide block mb-1"
+                  style={{ color: "oklch(50% 0.1 145)" }}
+                >
+                  ঠিকানা
+                </label>
+                <input
+                  type="text"
+                  id="edit-address"
+                  data-ocid="complete-list.input"
+                  value={editDelivery.address}
+                  onChange={(e) =>
+                    setEditDelivery({
+                      ...editDelivery,
+                      address: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                  style={{
+                    background: "oklch(96% 0.03 145)",
+                    border: "1.5px solid oklch(85% 0.07 145)",
+                  }}
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              data-ocid="complete-list.save_button"
+              onClick={handleEditSave}
+              className="w-full mt-5 py-3 rounded-xl font-bold text-white text-sm"
+              style={{ background: "oklch(48% 0.18 145)" }}
+            >
+              সেভ করুন
+            </button>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
