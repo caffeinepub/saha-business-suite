@@ -7,6 +7,8 @@ import {
   MapPin,
   PackageX,
   Pencil,
+  Phone,
+  Printer,
   Trash2,
   Truck,
   Users,
@@ -73,16 +75,16 @@ export default function CompleteList({
     setEditDelivery(null);
   }
 
-  function handleDownloadPDF() {
-    const periodLabel =
-      fromDate && toDate
-        ? `Period: ${formatDisplayDate(fromDate)} - ${formatDisplayDate(toDate)}`
-        : fromDate
-          ? `From: ${formatDisplayDate(fromDate)}`
-          : toDate
-            ? `To: ${formatDisplayDate(toDate)}`
-            : "All Deliveries";
+  const periodLabel =
+    fromDate && toDate
+      ? `Period: ${formatDisplayDate(fromDate)} - ${formatDisplayDate(toDate)}`
+      : fromDate
+        ? `From: ${formatDisplayDate(fromDate)}`
+        : toDate
+          ? `To: ${formatDisplayDate(toDate)}`
+          : "All Deliveries";
 
+  function buildCompleteHtml(): string {
     const rows = filtered
       .map((d) => {
         const labors = buildMergedLabors(d);
@@ -91,24 +93,30 @@ export default function CompleteList({
             (l) =>
               `<div style="display:inline-block;width:48%;margin:1%;padding:4px 8px;background:#f0faf0;border:1px solid #c8e6c9;border-radius:6px;font-size:11px">
                 <span>${l.name}</span>
-                <span style="float:right;color:#2e7d32;font-weight:700">${l.amount > 0 ? `৳${l.amount.toFixed(2)}` : "—"}</span>
+                <span style="float:right;color:#2e7d32;font-weight:700">${l.amount > 0 ? `৳${l.amount.toFixed(2)}` : "\u2014"}</span>
               </div>`,
           )
           .join("");
+        const invoiceHtml = d.invoiceNumber
+          ? `<span style="font-size:10px;font-weight:700;color:#6b21a8;background:#f3e8ff;padding:1px 6px;border-radius:4px;margin-left:6px">INV# ${d.invoiceNumber}</span>`
+          : "";
+        const phoneHtml = d.phoneNumber
+          ? `<div style="font-size:11px;color:#555;margin:3px 0">☎️ ${d.phoneNumber}</div>`
+          : "";
         return `
           <div style="background:#fff;border:1.5px solid #c8e6c9;border-radius:12px;padding:14px;margin-bottom:12px">
             <div style="display:flex;justify-content:space-between;align-items:center">
-              <strong style="font-size:14px;color:#1b5e20">${d.customerName}</strong>
-              ${d.totalAmount && d.totalAmount > 0 ? `<span style="background:#e8f5e9;color:#2e7d32;font-weight:700;padding:3px 10px;border-radius:20px">৳${Math.round(d.totalAmount).toLocaleString()}</span>` : ""}
+              <div><strong style="font-size:14px;color:#1b5e20">${d.customerName}</strong>${invoiceHtml}</div>
+              ${d.totalAmount && d.totalAmount > 0 ? `<span style="background:#e8f5e9;color:#2e7d32;font-weight:700;padding:3px 10px;border-radius:20px">৳${d.totalAmount.toFixed(2)}</span>` : ""}
             </div>
             <div style="font-size:11px;color:#666;margin:4px 0">${d.date} &nbsp;|&nbsp; ${d.vehicleNumber} &nbsp;|&nbsp; ${d.totalBricks} Bricks &nbsp;|&nbsp; ${d.locationType}</div>
+            ${phoneHtml}
             <div style="font-size:11px;color:#888;margin-bottom:8px">${d.address}</div>
             ${labors.length > 0 ? `<div style="border-top:1px solid #e8f5e9;padding-top:8px">${laborHtml}</div>` : ""}
           </div>`;
       })
       .join("");
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>SAHA Complete Deliveries</title>
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>SAHA Complete Deliveries</title>
       <style>body{font-family:sans-serif;margin:20px;color:#222}@media print{body{margin:0}}</style>
       </head><body>
       <h2 style="color:#1b5e20;margin-bottom:4px">SAHA - Complete Delivery List</h2>
@@ -116,14 +124,133 @@ export default function CompleteList({
       ${rows}
       <p style="color:#aaa;font-size:11px;text-align:center;margin-top:24px">SAHA Business Suite</p>
       </body></html>`;
+  }
 
+  function handlePrint() {
+    const html = buildCompleteHtml();
     const win = window.open("", "_blank");
     if (win) {
       win.document.write(html);
       win.document.close();
       win.focus();
-      win.print();
+      setTimeout(() => win.print(), 500);
     }
+  }
+
+  async function handleDownloadPDF() {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+    let y = 20;
+
+    doc.setFontSize(18);
+    doc.setTextColor(27, 94, 32);
+    doc.setFont("helvetica", "bold");
+    doc.text("SAHA - Complete Delivery List", margin, y);
+    y += 7;
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${periodLabel} | Total: ${filtered.length}`, margin, y);
+    y += 3;
+    doc.setDrawColor(22, 163, 74);
+    doc.setLineWidth(0.6);
+    doc.line(margin, y + 1, pageWidth - margin, y + 1);
+    y += 7;
+
+    for (const d of filtered) {
+      const labors = buildMergedLabors(d);
+      const cardH =
+        30 +
+        (d.phoneNumber ? 5 : 0) +
+        (d.invoiceNumber ? 5 : 0) +
+        (labors.length > 0 ? Math.ceil(labors.length / 2) * 7 + 5 : 0);
+      if (y + cardH > 270) {
+        doc.addPage();
+        y = 20;
+      }
+
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(200, 230, 201);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(margin, y, pageWidth - margin * 2, cardH, 3, 3, "FD");
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(27, 94, 32);
+      doc.text(d.customerName, margin + 3, y + 7);
+      if (d.totalAmount && d.totalAmount > 0) {
+        doc.setTextColor(46, 125, 50);
+        doc.text(
+          `\u09f3${d.totalAmount.toFixed(2)}`,
+          pageWidth - margin - 3,
+          y + 7,
+          { align: "right" },
+        );
+      }
+
+      let ly = y + 13;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 100, 100);
+      doc.text(
+        `${d.date}  |  ${d.vehicleNumber}  |  ${d.totalBricks} Bricks  |  ${d.locationType}`,
+        margin + 3,
+        ly,
+      );
+      ly += 5;
+
+      if (d.invoiceNumber) {
+        doc.setTextColor(107, 33, 168);
+        doc.setFont("helvetica", "bold");
+        doc.text(`INV# ${d.invoiceNumber}`, margin + 3, ly);
+        ly += 5;
+      }
+      if (d.phoneNumber) {
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(80, 80, 80);
+        doc.text(`Ph: ${d.phoneNumber}`, margin + 3, ly);
+        ly += 5;
+      }
+      doc.setTextColor(120, 120, 120);
+      doc.text(d.address, margin + 3, ly);
+      ly += 5;
+
+      if (labors.length > 0) {
+        doc.setDrawColor(220, 240, 220);
+        doc.line(margin + 3, ly, pageWidth - margin - 3, ly);
+        ly += 4;
+        labors.forEach((l, li) => {
+          const col = li % 2;
+          const xPos = margin + 3 + col * ((pageWidth - margin * 2 - 6) / 2);
+          doc.setFontSize(9);
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(50, 50, 50);
+          doc.text(l.name, xPos, ly);
+          if (l.amount > 0) {
+            doc.setTextColor(46, 125, 50);
+            doc.setFont("helvetica", "bold");
+            doc.text(
+              `\u09f3${l.amount.toFixed(2)}`,
+              xPos + (pageWidth - margin * 2 - 6) / 2 - 2,
+              ly,
+              { align: "right" },
+            );
+          }
+          if (col === 1) ly += 6;
+        });
+        if (labors.length % 2 === 1) ly += 6;
+      }
+
+      y += cardH + 4;
+    }
+
+    doc.save("saha-complete-deliveries.pdf");
   }
 
   return (
@@ -159,16 +286,32 @@ export default function CompleteList({
             {filtered.length} টি সম্পন্ন ডেলিভারি
           </p>
         </div>
-        <button
-          type="button"
-          data-ocid="complete-list.primary_button"
-          onClick={handleDownloadPDF}
-          className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-colors"
-          style={{ background: "oklch(48% 0.18 145)", color: "white" }}
-        >
-          <Download size={14} />
-          PDF
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            data-ocid="complete-list.secondary_button"
+            onClick={handlePrint}
+            className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-colors"
+            style={{
+              background: "oklch(94% 0.04 145)",
+              color: "oklch(38% 0.14 145)",
+              border: "1.5px solid oklch(82% 0.08 145)",
+            }}
+          >
+            <Printer size={13} />
+            Print
+          </button>
+          <button
+            type="button"
+            data-ocid="complete-list.primary_button"
+            onClick={handleDownloadPDF}
+            className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-colors"
+            style={{ background: "oklch(48% 0.18 145)", color: "white" }}
+          >
+            <Download size={13} />
+            PDF
+          </button>
+        </div>
       </header>
 
       {/* Date Range Filter */}
@@ -250,7 +393,7 @@ export default function CompleteList({
                 className="text-base font-bold"
                 style={{ color: "oklch(38% 0.08 145)" }}
               >
-                কোনো সম্পন্ন ডেলিভারি নেই
+                কোনো সম্পন্ন ড৅লিভারি নেই
               </p>
               <p
                 className="text-xs mt-1"
@@ -366,6 +509,40 @@ export default function CompleteList({
                   </div>
                 </div>
 
+                {/* Invoice Number */}
+                {d.invoiceNumber && (
+                  <div className="flex items-center gap-2 mb-2">
+                    <span
+                      className="text-[10px] font-extrabold uppercase tracking-wide rounded px-1.5 py-0.5"
+                      style={{
+                        background: "oklch(94% 0.08 270)",
+                        color: "oklch(40% 0.18 270)",
+                      }}
+                    >
+                      INV#
+                    </span>
+                    <p
+                      className="text-xs font-bold"
+                      style={{ color: "oklch(35% 0.06 270)" }}
+                    >
+                      {d.invoiceNumber}
+                    </p>
+                  </div>
+                )}
+
+                {/* Phone */}
+                {d.phoneNumber && (
+                  <div className="flex items-center gap-2 mb-2">
+                    <Phone size={12} style={{ color: "oklch(55% 0.1 145)" }} />
+                    <p
+                      className="text-xs font-medium"
+                      style={{ color: "oklch(45% 0.06 145)" }}
+                    >
+                      {d.phoneNumber}
+                    </p>
+                  </div>
+                )}
+
                 {/* Labor Details - merged, no duplicates */}
                 {mergedLabors.length > 0 && (
                   <div
@@ -407,7 +584,7 @@ export default function CompleteList({
                           >
                             {labor.amount > 0
                               ? `৳${labor.amount.toFixed(2)}`
-                              : "—"}
+                              : "\u2014"}
                           </span>
                         </div>
                       ))}
@@ -507,7 +684,7 @@ export default function CompleteList({
                 className="text-base font-extrabold"
                 style={{ color: "oklch(28% 0.06 145)" }}
               >
-                ডেলিভারি এডিট করুন
+                ড৅লিভারি এডিট করুন
               </h3>
               <button
                 type="button"

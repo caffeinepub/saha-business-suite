@@ -8,6 +8,7 @@ import {
   PackageX,
   Pencil,
   Phone,
+  Printer,
   Trash2,
   User,
 } from "lucide-react";
@@ -30,6 +31,94 @@ interface Props {
   onComplete: (completed: CompleteDelivery) => void;
 }
 
+function buildPendingHtml(deliveries: PendingDelivery[]): string {
+  const cards = deliveries
+    .map((d, idx) => {
+      const bg = idx % 2 === 0 ? "#ffffff" : "#f0fdf4";
+      const locationColor = d.locationType === "Local" ? "#166534" : "#92400e";
+      const locationBg = d.locationType === "Local" ? "#dcfce7" : "#fef3c7";
+
+      const phoneRow = d.phoneNumber
+        ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <span style="font-size:12px">☎️</span>
+            <span style="font-size:12px;color:#374151">${d.phoneNumber}</span>
+          </div>`
+        : "";
+
+      const invoiceRow = d.invoiceNumber
+        ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <span style="font-size:11px;font-weight:700;color:#6b21a8">INV#</span>
+            <span style="font-size:12px;color:#374151">${d.invoiceNumber}</span>
+          </div>`
+        : "";
+
+      const dueHtml =
+        d.dueAmount !== undefined && d.dueAmount > 0
+          ? `<span style="font-size:12px;font-weight:700;color:#b45309">Due: ৳${d.dueAmount.toLocaleString()}</span>`
+          : "";
+
+      return `
+        <div style="background:${bg};border:1.5px solid #d1fae5;border-radius:12px;padding:14px 16px;margin-bottom:12px;page-break-inside:avoid">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:32px;height:32px;background:#dcfce7;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <span style="font-size:15px">👤</span>
+              </div>
+              <div>
+                <div style="font-size:14px;font-weight:800;color:#14532d">${d.customerName}</div>
+                <div style="font-size:11px;color:#6b7280;margin-top:1px">${d.date}</div>
+              </div>
+            </div>
+            <span style="background:${locationBg};color:${locationColor};border-radius:999px;padding:2px 10px;font-size:10px;font-weight:700;flex-shrink:0">${d.locationType}</span>
+          </div>
+          ${invoiceRow}
+          <div style="display:flex;align-items:flex-start;gap:6px;margin-top:8px;margin-bottom:6px">
+            <span style="font-size:12px;margin-top:1px">📍</span>
+            <span style="font-size:12px;color:#374151;line-height:1.4">${d.address}</span>
+          </div>
+          ${phoneRow}
+          <div style="display:flex;align-items:center;justify-content:space-between;padding-top:8px;margin-top:4px;border-top:1px solid #d1fae5">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:12px">🧱</span>
+              <span style="font-size:12px;font-weight:700;color:#166534">${d.totalBricks} bricks</span>
+            </div>
+            ${dueHtml}
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SAHA Pending List</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f9fafb; color: #111827; padding: 24px; }
+    @media print {
+      body { background: white; padding: 16px; }
+      @page { margin: 1cm; }
+    }
+  </style>
+</head>
+<body>
+  <div style="max-width:600px;margin:0 auto">
+    <div style="margin-bottom:20px">
+      <h1 style="font-size:20px;font-weight:900;color:#14532d;letter-spacing:-0.5px">SAHA</h1>
+      <h2 style="font-size:15px;font-weight:700;color:#166534;margin-top:2px">Pending Delivery List</h2>
+      <p style="font-size:12px;color:#6b7280;margin-top:6px">মোট পেন্ডিং: <strong>${deliveries.length} টি</strong></p>
+      <div style="height:2px;background:linear-gradient(to right,#16a34a,#86efac);border-radius:99px;margin-top:10px"></div>
+    </div>
+    ${cards || "<p style='color:#9ca3af;text-align:center;padding:40px 0'>কোনো পেন্ডিং ডেলিভারি নেই</p>"}
+    <div style="text-align:center;margin-top:24px;padding-top:16px;border-top:1px solid #e5e7eb">
+      <p style="font-size:11px;color:#9ca3af">SAHA Business Suite</p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
 export default function PendingList({
   deliveries,
   vehicles,
@@ -41,33 +130,8 @@ export default function PendingList({
   const [completingDelivery, setCompletingDelivery] =
     useState<PendingDelivery | null>(null);
 
-  function handleDownloadPDF() {
-    const rows = deliveries
-      .map(
-        (d) => `
-        <div style="background:#fff;border:1.5px solid #ffe0b2;border-radius:12px;padding:14px;margin-bottom:12px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <strong style="font-size:14px;color:#e65100">${d.customerName}</strong>
-            <span style="background:#fff3e0;color:#e65100;font-weight:700;padding:3px 10px;border-radius:20px;font-size:12px">${d.locationType}</span>
-          </div>
-          <div style="font-size:11px;color:#888;margin-bottom:4px">${d.date}</div>
-          <div style="font-size:11px;color:#666;margin-bottom:4px">${d.address}</div>
-          ${d.phoneNumber ? `<div style="font-size:11px;color:#555;margin-bottom:4px">📞 ${d.phoneNumber}</div>` : ""}
-          <div style="font-size:12px;color:#555;margin-bottom:4px">ইট: <strong>${d.totalBricks}</strong></div>
-          ${d.dueAmount !== undefined ? `<div style="font-size:12px;color:#e65100;font-weight:700">বকেয়া: ৳${d.dueAmount.toLocaleString()}</div>` : ""}
-        </div>`,
-      )
-      .join("");
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>SAHA Pending List</title>
-      <style>body{font-family:sans-serif;margin:20px;color:#222}@media print{body{margin:0}}</style>
-      </head><body>
-      <h2 style="color:#e65100;margin-bottom:4px">SAHA - Pending Delivery List</h2>
-      <p style="color:#666;font-size:13px;margin-bottom:16px">মোট পেন্ডিং: ${deliveries.length} টি</p>
-      ${rows || "<p style='color:#aaa'>কোনো পেন্ডিং ডেলিভারি নেই</p>"}
-      <p style="color:#aaa;font-size:11px;text-align:center;margin-top:24px">SAHA Business Suite</p>
-      </body></html>`;
-
+  function handlePrint() {
+    const html = buildPendingHtml(deliveries);
     const printWin = window.open("", "_blank");
     if (printWin) {
       printWin.document.write(html);
@@ -77,6 +141,123 @@ export default function PendingList({
         printWin.print();
       }, 500);
     }
+  }
+
+  async function handleDownloadPDF() {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+    let y = 20;
+
+    // Header
+    doc.setFontSize(20);
+    doc.setTextColor(20, 83, 45);
+    doc.setFont("helvetica", "bold");
+    doc.text("SAHA", margin, y);
+    y += 8;
+    doc.setFontSize(13);
+    doc.text("Pending Delivery List", margin, y);
+    y += 6;
+    doc.setFontSize(10);
+    doc.setTextColor(107, 114, 128);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Total: ${deliveries.length} pending`, margin, y);
+    y += 3;
+    doc.setDrawColor(22, 163, 74);
+    doc.setLineWidth(0.8);
+    doc.line(margin, y + 1, pageWidth - margin, y + 1);
+    y += 6;
+
+    for (const d of deliveries) {
+      if (y > 260) {
+        doc.addPage();
+        y = 20;
+      }
+      // Card background
+      doc.setFillColor(240, 253, 244);
+      doc.setDrawColor(209, 250, 229);
+      doc.setLineWidth(0.4);
+      const cardHeight =
+        28 + (d.phoneNumber ? 6 : 0) + (d.invoiceNumber ? 6 : 0);
+      doc.roundedRect(
+        margin,
+        y,
+        pageWidth - margin * 2,
+        cardHeight,
+        3,
+        3,
+        "FD",
+      );
+
+      // Name + Date
+      doc.setFontSize(11);
+      doc.setTextColor(20, 83, 45);
+      doc.setFont("helvetica", "bold");
+      doc.text(d.customerName, margin + 3, y + 7);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(107, 114, 128);
+      doc.text(d.date, margin + 3, y + 13);
+
+      // Location badge (right)
+      const locLabel = d.locationType;
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(
+        d.locationType === "Local" ? 22 : 146,
+        d.locationType === "Local" ? 101 : 64,
+        d.locationType === "Local" ? 52 : 14,
+      );
+      doc.text(locLabel, pageWidth - margin - 3, y + 7, { align: "right" });
+
+      let lineY = y + 17;
+
+      // Invoice
+      if (d.invoiceNumber) {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(107, 33, 168);
+        doc.text(`INV# ${d.invoiceNumber}`, margin + 3, lineY);
+        lineY += 6;
+      }
+
+      // Address
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(55, 65, 81);
+      doc.text(`${d.address}`, margin + 3, lineY);
+      lineY += 6;
+
+      // Phone
+      if (d.phoneNumber) {
+        doc.setTextColor(75, 85, 99);
+        doc.text(`Ph: ${d.phoneNumber}`, margin + 3, lineY);
+        lineY += 6;
+      }
+
+      // Bricks + Due
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(22, 101, 52);
+      doc.text(`Bricks: ${d.totalBricks}`, margin + 3, lineY);
+      if (d.dueAmount !== undefined && d.dueAmount > 0) {
+        doc.setTextColor(180, 83, 9);
+        doc.text(
+          `Due: ${d.dueAmount.toLocaleString()}`,
+          pageWidth - margin - 3,
+          lineY,
+          { align: "right" },
+        );
+      }
+
+      y += cardHeight + 4;
+    }
+
+    doc.save("saha-pending-list.pdf");
   }
 
   if (completingDelivery) {
@@ -127,16 +308,32 @@ export default function PendingList({
             {deliveries.length} টি পেন্ডিং ডেলিভারি
           </p>
         </div>
-        <button
-          type="button"
-          data-ocid="pending-list.primary_button"
-          onClick={handleDownloadPDF}
-          className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-colors"
-          style={{ background: "oklch(48% 0.18 145)", color: "white" }}
-        >
-          <Download size={14} />
-          PDF
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            data-ocid="pending-list.secondary_button"
+            onClick={handlePrint}
+            className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-colors"
+            style={{
+              background: "oklch(94% 0.04 145)",
+              color: "oklch(38% 0.14 145)",
+              border: "1.5px solid oklch(82% 0.08 145)",
+            }}
+          >
+            <Printer size={13} />
+            Print
+          </button>
+          <button
+            type="button"
+            data-ocid="pending-list.primary_button"
+            onClick={handleDownloadPDF}
+            className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-colors"
+            style={{ background: "oklch(48% 0.18 145)", color: "white" }}
+          >
+            <Download size={13} />
+            PDF
+          </button>
+        </div>
         <Badge
           className="rounded-full text-xs font-bold px-3 py-1"
           style={{
@@ -229,6 +426,27 @@ export default function PendingList({
                   {d.locationType}
                 </Badge>
               </div>
+
+              {/* Invoice Number */}
+              {d.invoiceNumber && (
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className="text-[10px] font-extrabold uppercase tracking-wide rounded px-1.5 py-0.5"
+                    style={{
+                      background: "oklch(94% 0.08 270)",
+                      color: "oklch(40% 0.18 270)",
+                    }}
+                  >
+                    INV#
+                  </span>
+                  <p
+                    className="text-xs font-bold"
+                    style={{ color: "oklch(35% 0.06 270)" }}
+                  >
+                    {d.invoiceNumber}
+                  </p>
+                </div>
+              )}
 
               {/* Address */}
               <div className="flex items-start gap-2 mb-2">

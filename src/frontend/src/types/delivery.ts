@@ -7,6 +7,7 @@ export interface PendingDelivery {
   id: string;
   date: string;
   customerName: string;
+  invoiceNumber?: string;
   address: string;
   phoneNumber?: string;
   dueAmount?: number;
@@ -44,6 +45,7 @@ export interface CompleteDelivery {
   id: string;
   date: string;
   customerName: string;
+  invoiceNumber?: string;
   address: string;
   phoneNumber?: string;
   dueAmount?: number;

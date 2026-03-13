@@ -30,6 +30,7 @@ interface Props {
 export default function AddPendingDelivery({ onSave, onBack }: Props) {
   const [date, setDate] = useState(todayString());
   const [customerName, setCustomerName] = useState("");
+  const [invoiceNumber, setInvoiceNumber] = useState("");
   const [address, setAddress] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [dueAmount, setDueAmount] = useState("");
@@ -84,6 +85,7 @@ export default function AddPendingDelivery({ onSave, onBack }: Props) {
       id: `${Date.now()}`,
       date,
       customerName: customerName.trim(),
+      invoiceNumber: invoiceNumber.trim() || undefined,
       address: address.trim(),
       phoneNumber: phoneNumber.trim() || undefined,
       dueAmount: dueAmount ? Number.parseFloat(dueAmount) : undefined,
@@ -174,6 +176,29 @@ export default function AddPendingDelivery({ onSave, onBack }: Props) {
                 placeholder="গ্রাহকের নাম লিখুন"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
+                className="mt-1 h-11 rounded-xl border-2 text-sm"
+                style={{ borderColor: "oklch(88% 0.06 145)" }}
+              />
+            </div>
+            <div>
+              <Label
+                className="text-xs font-semibold"
+                style={{ color: "oklch(40% 0.08 145)" }}
+              >
+                Invoice Number{" "}
+                <span
+                  className="font-normal"
+                  style={{ color: "oklch(65% 0.06 145)" }}
+                >
+                  (optional)
+                </span>
+              </Label>
+              <Input
+                data-ocid="add-pending.input"
+                type="text"
+                placeholder="ইনভোয়েস নম্বর লিখুন"
+                value={invoiceNumber}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
                 className="mt-1 h-11 rounded-xl border-2 text-sm"
                 style={{ borderColor: "oklch(88% 0.06 145)" }}
               />

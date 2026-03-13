@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   Download,
   PackageX,
+  Printer,
   Truck,
   Users,
 } from "lucide-react";
@@ -190,7 +191,7 @@ export default function ReportPage({
   );
 
   // ── PDF Handlers ──
-  function handleDownloadDailyPDF() {
+  function handlePrintDailyPDF() {
     const periodLabel =
       dailyFrom === dailyTo
         ? `Date: ${formatDisplayDate(dailyFrom)}`
@@ -311,7 +312,7 @@ export default function ReportPage({
     }
   }
 
-  function handleDownloadWeeklyPDF() {
+  function handlePrintWeeklyPDF() {
     const periodLabel =
       weeklyFrom && weeklyTo
         ? `${formatDisplayDate(weeklyFrom)} – ${formatDisplayDate(weeklyTo)}`
@@ -376,6 +377,207 @@ export default function ReportPage({
     }
   }
 
+  async function handleDownloadDailyPDF() {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+    const pw = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    let y = 20;
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(20, 83, 45);
+    doc.text("SAHA - Daily Report", margin, y);
+    y += 7;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 100, 100);
+    doc.text(
+      dailyFrom && dailyTo
+        ? `${formatDisplayDate(dailyFrom)} - ${formatDisplayDate(dailyTo)}`
+        : "All Dates",
+      margin,
+      y,
+    );
+    y += 4;
+    doc.setDrawColor(22, 163, 74);
+    doc.setLineWidth(0.6);
+    doc.line(margin, y, pw - margin, y);
+    y += 6;
+
+    for (const [vehicleNum, vDeliveries] of vehicleGroups.entries()) {
+      const allLabors = [
+        ...new Set(
+          vDeliveries.flatMap((d) => {
+            const m = new Map();
+            for (const n of d.loadingLaborNames)
+              m.set(n, (m.get(n) ?? 0) + (d.perLoadingLaborAmount ?? 0));
+            for (const n of d.unloadingLaborNames)
+              m.set(n, (m.get(n) ?? 0) + (d.perUnloadingLaborAmount ?? 0));
+            return [...m.keys()];
+          }),
+        ),
+      ];
+      const cardH = 14 + vDeliveries.length * 8 + 10 + 8;
+      if (y + cardH > 270) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.setFillColor(240, 253, 244);
+      doc.setDrawColor(200, 230, 201);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(margin, y, pw - margin * 2, cardH, 3, 3, "FD");
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(20, 83, 45);
+      doc.text(`Vehicle: ${vehicleNum}`, margin + 3, y + 7);
+      y += 12;
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(80, 80, 80);
+      doc.text("Customer", margin + 3, y);
+      doc.text("Qty", margin + 55, y);
+      doc.text("Rate", margin + 72, y);
+      allLabors.forEach((name, li) => {
+        doc.text(name.substring(0, 8), margin + 90 + li * 22, y);
+      });
+      y += 5;
+      doc.setDrawColor(200, 230, 201);
+      doc.line(margin + 2, y, pw - margin - 2, y);
+      y += 3;
+      for (const d of vDeliveries) {
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(30, 30, 30);
+        doc.setFontSize(8);
+        doc.text(d.customerName.substring(0, 14), margin + 3, y);
+        doc.text(String(d.totalBricks), margin + 55, y);
+        doc.text(
+          d.totalAmount ? d.totalAmount.toFixed(0) : "0",
+          margin + 72,
+          y,
+        );
+        const laborMap = new Map();
+        for (const n of d.loadingLaborNames)
+          laborMap.set(
+            n,
+            (laborMap.get(n) ?? 0) + (d.perLoadingLaborAmount ?? 0),
+          );
+        for (const n of d.unloadingLaborNames)
+          laborMap.set(
+            n,
+            (laborMap.get(n) ?? 0) + (d.perUnloadingLaborAmount ?? 0),
+          );
+        allLabors.forEach((name, li) => {
+          const amt = laborMap.get(name) ?? 0;
+          doc.text(amt > 0 ? amt.toFixed(0) : "-", margin + 90 + li * 22, y);
+        });
+        y += 7;
+      }
+      const grandTotal = vDeliveries.reduce(
+        (s, d) => s + (d.totalAmount ?? 0),
+        0,
+      );
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(20, 83, 45);
+      doc.text(`Grand Total: ${grandTotal.toFixed(2)}`, margin + 3, y + 2);
+      y += 10;
+    }
+    doc.save("saha-daily-report.pdf");
+  }
+
+  async function handleDownloadWeeklyPDF() {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+    const pw = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    let y = 20;
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(20, 83, 45);
+    doc.text("SAHA - Weekly Labor Report", margin, y);
+    y += 7;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 100, 100);
+    doc.text(
+      weeklyFrom && weeklyTo
+        ? `${formatDisplayDate(weeklyFrom)} - ${formatDisplayDate(weeklyTo)}`
+        : "All Dates",
+      margin,
+      y,
+    );
+    y += 4;
+    doc.setDrawColor(22, 163, 74);
+    doc.setLineWidth(0.6);
+    doc.line(margin, y, pw - margin, y);
+    y += 6;
+
+    // Build same data as screen
+    const allLaborNames = [
+      ...new Set(
+        weeklyCompleteDeliveries.flatMap((d) => {
+          const m = new Map();
+          for (const n of d.loadingLaborNames) m.set(n, true);
+          for (const n of d.unloadingLaborNames) m.set(n, true);
+          return [...m.keys()];
+        }),
+      ),
+    ];
+    const dateGroups = new Map<string, Map<string, number>>();
+    for (const d of weeklyCompleteDeliveries) {
+      if (!dateGroups.has(d.date)) dateGroups.set(d.date, new Map());
+      const dg = dateGroups.get(d.date)!;
+      const m = new Map<string, number>();
+      for (const n of d.loadingLaborNames)
+        m.set(n, (m.get(n) ?? 0) + (d.perLoadingLaborAmount ?? 0));
+      for (const n of d.unloadingLaborNames)
+        m.set(n, (m.get(n) ?? 0) + (d.perUnloadingLaborAmount ?? 0));
+      for (const [name, amt] of m.entries())
+        dg.set(name, (dg.get(name) ?? 0) + amt);
+    }
+
+    const colW = Math.min(
+      30,
+      (pw - margin * 2 - 25) / Math.max(allLaborNames.length, 1),
+    );
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(80, 80, 80);
+    doc.text("Date", margin + 3, y);
+    allLaborNames.forEach((name, li) =>
+      doc.text(name.substring(0, 8), margin + 25 + li * colW, y),
+    );
+    y += 5;
+    doc.setDrawColor(200, 230, 201);
+    doc.line(margin, y, pw - margin, y);
+    y += 3;
+
+    for (const [date, laborTotals] of dateGroups.entries()) {
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(30, 30, 30);
+      doc.text(formatDisplayDate(date), margin + 3, y);
+      allLaborNames.forEach((name: string, li: number) => {
+        const amt = laborTotals.get(name) ?? 0;
+        doc.text(amt > 0 ? amt.toFixed(0) : "-", margin + 25 + li * colW, y);
+      });
+      y += 6;
+    }
+    doc.save("saha-weekly-report.pdf");
+  }
+
   // Group daily deliveries by vehicle
   const vehicleGroups = groupByVehicle(dailyDeliveries);
 
@@ -421,28 +623,60 @@ export default function ReportPage({
           </div>
         </div>
         {period === "daily" && (
-          <button
-            type="button"
-            data-ocid="report.daily.primary_button"
-            onClick={handleDownloadDailyPDF}
-            className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-colors"
-            style={{ background: "oklch(48% 0.18 145)", color: "white" }}
-          >
-            <Download size={14} />
-            PDF
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              data-ocid="report.daily.secondary_button"
+              onClick={handlePrintDailyPDF}
+              className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-colors"
+              style={{
+                background: "oklch(94% 0.04 145)",
+                color: "oklch(38% 0.14 145)",
+                border: "1.5px solid oklch(82% 0.08 145)",
+              }}
+            >
+              <Printer size={13} />
+              Print
+            </button>
+            <button
+              type="button"
+              data-ocid="report.daily.primary_button"
+              onClick={handleDownloadDailyPDF}
+              className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-colors"
+              style={{ background: "oklch(48% 0.18 145)", color: "white" }}
+            >
+              <Download size={13} />
+              PDF
+            </button>
+          </div>
         )}
         {period === "weekly" && (
-          <button
-            type="button"
-            data-ocid="report.weekly.primary_button"
-            onClick={handleDownloadWeeklyPDF}
-            className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-colors"
-            style={{ background: "oklch(38% 0.16 145)", color: "white" }}
-          >
-            <Download size={14} />
-            PDF
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              data-ocid="report.weekly.secondary_button"
+              onClick={handlePrintWeeklyPDF}
+              className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-colors"
+              style={{
+                background: "oklch(94% 0.04 145)",
+                color: "oklch(38% 0.14 145)",
+                border: "1.5px solid oklch(82% 0.08 145)",
+              }}
+            >
+              <Printer size={13} />
+              Print
+            </button>
+            <button
+              type="button"
+              data-ocid="report.weekly.primary_button"
+              onClick={handleDownloadWeeklyPDF}
+              className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-colors"
+              style={{ background: "oklch(38% 0.16 145)", color: "white" }}
+            >
+              <Download size={13} />
+              PDF
+            </button>
+          </div>
         )}
       </header>
 
