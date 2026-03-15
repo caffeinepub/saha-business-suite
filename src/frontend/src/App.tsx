@@ -141,6 +141,13 @@ export default function App() {
     "",
   );
 
+  // Edit state
+  const [editingPending, setEditingPending] = useState<PendingDelivery | null>(
+    null,
+  );
+  const [editingComplete, setEditingComplete] =
+    useState<CompleteDelivery | null>(null);
+
   // Profile sheet state
   const [profileSheetOpen, setProfileSheetOpen] = useState(false);
   const [editName, setEditName] = useState("");
@@ -194,23 +201,27 @@ export default function App() {
     reader.readAsDataURL(file);
   }
 
-  function handleSavePending(delivery: PendingDelivery) {
-    setPendingDeliveries((prev) => [...prev, delivery]);
-    setActiveTab("home");
-  }
-
-  function handleSaveDirect(delivery: CompleteDelivery) {
-    setCompleteDeliveries((prev) => [...prev, delivery]);
-    setActiveTab("home");
-  }
-
   if (activeTab === "add") {
     return (
       <div className={WRAPPER}>
         <div className={INNER}>
           <AddPendingDelivery
-            onSave={handleSavePending}
-            onBack={() => setActiveTab("home")}
+            editData={editingPending ?? undefined}
+            onSave={(delivery) => {
+              if (editingPending) {
+                setPendingDeliveries((prev) =>
+                  prev.map((d) => (d.id === delivery.id ? delivery : d)),
+                );
+                setEditingPending(null);
+              } else {
+                setPendingDeliveries((prev) => [...prev, delivery]);
+              }
+              setActiveTab("home");
+            }}
+            onBack={() => {
+              setEditingPending(null);
+              setActiveTab("home");
+            }}
           />
         </div>
       </div>
@@ -224,8 +235,22 @@ export default function App() {
           <DirectDelivery
             vehicles={vehicles}
             rates={rates}
-            onSave={handleSaveDirect}
-            onBack={() => setActiveTab("home")}
+            editData={editingComplete ?? undefined}
+            onSave={(delivery) => {
+              if (editingComplete) {
+                setCompleteDeliveries((prev) =>
+                  prev.map((d) => (d.id === delivery.id ? delivery : d)),
+                );
+                setEditingComplete(null);
+              } else {
+                setCompleteDeliveries((prev) => [...prev, delivery]);
+              }
+              setActiveTab("home");
+            }}
+            onBack={() => {
+              setEditingComplete(null);
+              setActiveTab("home");
+            }}
           />
         </div>
       </div>
@@ -274,11 +299,11 @@ export default function App() {
             onDelete={(id) =>
               setPendingDeliveries((prev) => prev.filter((d) => d.id !== id))
             }
-            onEdit={(updated) =>
-              setPendingDeliveries((prev) =>
-                prev.map((d) => (d.id === updated.id ? updated : d)),
-              )
-            }
+            onEdit={(delivery) => {
+              setEditingPending(delivery);
+              setSubView(null);
+              setActiveTab("add");
+            }}
             onComplete={(completed) => {
               setCompleteDeliveries((prev) => [...prev, completed]);
               setPendingDeliveries((prev) =>
@@ -302,11 +327,11 @@ export default function App() {
             onDelete={(id) =>
               setCompleteDeliveries((prev) => prev.filter((d) => d.id !== id))
             }
-            onEdit={(updated) =>
-              setCompleteDeliveries((prev) =>
-                prev.map((d) => (d.id === updated.id ? updated : d)),
-              )
-            }
+            onEdit={(delivery) => {
+              setEditingComplete(delivery);
+              setSubView(null);
+              setActiveTab("direct");
+            }}
           />
         </div>
       </div>

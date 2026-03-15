@@ -116,8 +116,10 @@ export default function CompletePendingPage({
         ? unloadingShare / unloadingLabors.length
         : 0;
 
+    const todayDate = new Date().toISOString().split("T")[0];
     const completed: CompleteDelivery = {
       ...delivery,
+      date: todayDate,
       vehicleType: selectedVehicle.vehicleType,
       vehicleNumber: selectedVehicle.vehicleNumber,
       loadingLaborNames: loadingLabors,

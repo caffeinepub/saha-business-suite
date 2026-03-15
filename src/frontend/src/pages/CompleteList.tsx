@@ -144,7 +144,7 @@ export default function CompleteList({
               <div><strong style="font-size:14px;color:#1b5e20">${d.customerName}</strong>${invoiceHtml}</div>
               ${d.totalAmount && d.totalAmount > 0 ? `<span style="background:#e8f5e9;color:#2e7d32;font-weight:700;padding:3px 10px;border-radius:20px">৳${d.totalAmount.toFixed(2)}</span>` : ""}
             </div>
-            <div style="font-size:11px;color:#666;margin:4px 0">${d.date} &nbsp;|&nbsp; ${d.vehicleNumber} &nbsp;|&nbsp; ${d.totalBricks} Bricks &nbsp;|&nbsp; ${d.locationType}</div>
+            <div style="font-size:11px;color:#666;margin:4px 0">${d.date} &nbsp;|&nbsp; ${d.vehicleNumber} &nbsp;|&nbsp; ${d.bricks && d.bricks.length > 0 ? d.bricks.map((b) => `${b.type}: ${b.quantity}`).join(" | ") : `${d.totalBricks} Bricks`} &nbsp;|&nbsp; ${d.locationType}</div>
             ${phoneHtml}
             <div style="font-size:11px;color:#888;margin-bottom:8px">${d.address}</div>
             ${labors.length > 0 ? `<div style="border-top:1px solid #e8f5e9;padding-top:8px">${laborHtml}</div>` : ""}
@@ -241,7 +241,7 @@ export default function CompleteList({
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 100, 100);
       doc.text(
-        `${d.date}  |  ${d.vehicleNumber}  |  ${d.totalBricks} Bricks  |  ${d.locationType}`,
+        `${d.date}  |  ${d.vehicleNumber}  |  ${d.bricks && d.bricks.length > 0 ? d.bricks.map((b) => `${b.type}: ${b.quantity}`).join(", ") : `${d.totalBricks} Bricks`}  |  ${d.locationType}`,
         margin + 3,
         ly,
       );
@@ -501,7 +501,11 @@ export default function CompleteList({
                         style={{ color: "oklch(55% 0.06 145)" }}
                       >
                         <Layers size={10} />
-                        {d.totalBricks} Bricks
+                        {d.bricks && d.bricks.length > 0
+                          ? d.bricks
+                              .map((b) => `${b.type} - ${b.quantity}`)
+                              .join(", ")
+                          : `${d.totalBricks} Bricks`}
                       </span>
                     </div>
                   </div>

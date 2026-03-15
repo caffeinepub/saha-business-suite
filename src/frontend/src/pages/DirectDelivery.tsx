@@ -26,11 +26,21 @@ function todayString() {
   return new Date().toISOString().split("T")[0];
 }
 
+function bricksToRecord(bricks?: BrickSelection[]): Record<string, number> {
+  if (!bricks) return {};
+  const result: Record<string, number> = {};
+  for (const b of bricks) {
+    result[b.type] = b.quantity;
+  }
+  return result;
+}
+
 interface Props {
   vehicles: VehicleConfig[];
   rates: RatesConfig;
   onSave: (delivery: CompleteDelivery) => void;
   onBack: () => void;
+  editData?: CompleteDelivery;
 }
 
 function LaborSection({
@@ -168,28 +178,44 @@ export default function DirectDelivery({
   rates,
   onSave,
   onBack,
+  editData,
 }: Props) {
-  const [date, setDate] = useState(todayString());
-  const [customerName, setCustomerName] = useState("");
-  const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [address, setAddress] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [dueAmount, setDueAmount] = useState("");
-  const [selectedBricks, setSelectedBricks] = useState<Record<string, number>>(
-    {},
+  const isEditing = !!editData;
+  const [date, setDate] = useState(editData?.date ?? todayString());
+  const [customerName, setCustomerName] = useState(
+    editData?.customerName ?? "",
   );
-  const [safetyQuantity, setSafetyQuantity] = useState("");
+  const [invoiceNumber, setInvoiceNumber] = useState(
+    editData?.invoiceNumber ?? "",
+  );
+  const [address, setAddress] = useState(editData?.address ?? "");
+  const [phoneNumber, setPhoneNumber] = useState(editData?.phoneNumber ?? "");
+  const [dueAmount, setDueAmount] = useState(
+    editData?.dueAmount?.toString() ?? "",
+  );
+  const [selectedBricks, setSelectedBricks] = useState<Record<string, number>>(
+    bricksToRecord(editData?.bricks),
+  );
+  const [safetyQuantity, setSafetyQuantity] = useState(
+    editData?.safetyQuantity?.toString() ?? "",
+  );
   const [locationType, setLocationType] = useState<"Local" | "Outside" | null>(
-    null,
+    editData?.locationType ?? null,
   );
   const [vehicleType, setVehicleType] = useState<"Tractor" | "12 Wheel" | null>(
-    null,
+    editData?.vehicleType ?? null,
   );
-  const [vehicleNumber, setVehicleNumber] = useState("");
-  const [loadingLabors, setLoadingLabors] = useState<string[]>([]);
-  const [unloadingLabors, setUnloadingLabors] = useState<string[]>([]);
+  const [vehicleNumber, setVehicleNumber] = useState(
+    editData?.vehicleNumber ?? "",
+  );
+  const [loadingLabors, setLoadingLabors] = useState<string[]>(
+    editData?.loadingLaborNames ?? [],
+  );
+  const [unloadingLabors, setUnloadingLabors] = useState<string[]>(
+    editData?.unloadingLaborNames ?? [],
+  );
   const [error, setError] = useState("");
-  const [paidMoney, setPaidMoney] = useState(false);
+  const [paidMoney, setPaidMoney] = useState(editData?.paidMoney ?? false);
 
   const batsSelected = "Bats" in selectedBricks;
   const conversionInput = Number(rates.batsConversionInput) || 100;
@@ -282,7 +308,7 @@ export default function DirectDelivery({
     );
 
     const delivery: CompleteDelivery = {
-      id: `${Date.now()}`,
+      id: isEditing ? editData.id : `${Date.now()}`,
       date,
       customerName: customerName.trim(),
       invoiceNumber: invoiceNumber.trim() || undefined,
@@ -334,13 +360,13 @@ export default function DirectDelivery({
             className="text-lg font-extrabold font-display leading-tight"
             style={{ color: "oklch(28% 0.06 145)" }}
           >
-            Direct Delivery
+            {isEditing ? "Edit Direct Delivery" : "Direct Delivery"}
           </h2>
           <p
             className="text-[11px] font-medium"
             style={{ color: "oklch(58% 0.08 145)" }}
           >
-            Direct Delivery
+            {isEditing ? "Update delivery details" : "Direct Delivery"}
           </p>
         </div>
       </header>
@@ -754,7 +780,7 @@ export default function DirectDelivery({
 
         {/* Labor Sections */}
         <AnimatePresence>
-          {vehicleNumber && (
+          {(vehicleNumber || isEditing) && (
             <motion.section
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1013,7 +1039,7 @@ export default function DirectDelivery({
             boxShadow: "0 6px 20px oklch(50% 0.18 145 / 0.35)",
           }}
         >
-          Save
+          {isEditing ? "Update" : "Save"}
         </Button>
       </div>
     </div>

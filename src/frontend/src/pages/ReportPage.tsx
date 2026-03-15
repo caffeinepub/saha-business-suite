@@ -6,6 +6,7 @@ import {
   Download,
   PackageX,
   Printer,
+  Share2,
   Truck,
   Users,
 } from "lucide-react";
@@ -55,7 +56,7 @@ function buildMergedLabors(d: CompleteDelivery): MergedLabor[] {
 function formatDisplayDate(dateStr: string) {
   if (!dateStr) return dateStr;
   const parts = dateStr.split("-");
-  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0].slice(2)}`;
   return dateStr;
 }
 
@@ -336,66 +337,66 @@ export default function ReportPage({
             ? `To: ${formatDisplayDate(weeklyTo)}`
             : "All Deliveries";
 
-    const dateCardsHtml = weeklyDateRows
-      .map((row) => {
-        const activeLabours = weeklyLaborNames.filter(
-          (n) => (row.laborAmts[n] ?? 0) > 0,
-        );
-        const dayTotal = Object.values(row.laborAmts).reduce(
-          (s, v) => s + v,
-          0,
-        );
-        const rows = activeLabours
-          .map(
-            (n) =>
-              `<div style="display:flex;justify-content:space-between;padding:6px 14px;border-bottom:1px solid #e8f5e9">
-          <span style="color:#1b5e20;font-size:13px">${n}</span>
-          <span style="font-weight:700;color:#2e7d32;font-size:13px">₹${(row.laborAmts[n] ?? 0).toFixed(2)}</span>
-        </div>`,
-          )
+    // Build header cells
+    const thDates = weeklyDateKeys
+      .map((d) => {
+        const [yyyy, mm, dd] = d.split("-");
+        return `<th style="-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#1b5e20;color:white;border:1px solid #388e3c;padding:6px 8px;text-align:center;white-space:nowrap">${dd}/${mm}/${yyyy.slice(2)}</th>`;
+      })
+      .join("");
+    const thead = `<thead><tr>
+      <th style="-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#1b5e20;color:white;border:1px solid #388e3c;padding:6px 10px;text-align:left;white-space:nowrap">Name</th>
+      ${thDates}
+      <th style="-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#2e7d32;color:white;border:1px solid #388e3c;padding:6px 10px;text-align:right;white-space:nowrap">Total</th>
+    </tr></thead>`;
+
+    // Build body rows
+    const tbodyRows = weeklyLaborNames
+      .map((name, i) => {
+        const bg = i % 2 === 0 ? "white" : "#f9fbe7";
+        const dateCells = weeklyDateKeys
+          .map((dk) => {
+            const row = weeklyDateRows.find((r) => r.date === dk);
+            const amt = row?.laborAmts[name] ?? 0;
+            if (amt > 0) {
+              return `<td style="border:1px solid #c8e6c9;padding:5px 8px;text-align:center;color:#2e7d32;font-weight:600">₹${amt.toFixed(2)}</td>`;
+            }
+            return `<td style="border:1px solid #c8e6c9;padding:5px 8px;text-align:center;color:#aaa">NIL</td>`;
+          })
           .join("");
-        return `<div style="border:1.5px solid #c8e6c9;border-radius:12px;overflow:hidden;margin-bottom:12px;break-inside:avoid">
-        <div style="background:#2e7d32;color:#fff;padding:9px 14px;font-weight:800;font-size:13px;-webkit-print-color-adjust:exact;print-color-adjust:exact">📅 ${formatDisplayDate(row.date)}</div>
-        ${rows}
-        <div style="display:flex;justify-content:space-between;padding:7px 14px;background:#e8f5e9;font-weight:800;-webkit-print-color-adjust:exact;print-color-adjust:exact">
-          <span style="color:#1b5e20">Day Total</span>
-          <span style="color:#1b5e20">₹${dayTotal.toFixed(2)}</span>
-        </div>
-      </div>`;
+        const total = weeklyColTotals[name] ?? 0;
+        return `<tr style="background:${bg}">
+          <td style="border:1px solid #c8e6c9;padding:5px 10px;font-weight:700;white-space:nowrap">${name}</td>
+          ${dateCells}
+          <td style="border:1px solid #c8e6c9;padding:5px 10px;background:#e8f5e9;font-weight:800;text-align:right;color:#1b5e20;white-space:nowrap">₹${total.toFixed(2)}</td>
+        </tr>`;
       })
       .join("");
 
-    const summaryRows = weeklyLaborNames
-      .map(
-        (n) =>
-          `<div style="display:flex;justify-content:space-between;padding:6px 14px;border-bottom:1px solid #e8f5e9">
-        <span style="color:#1b5e20;font-weight:700;font-size:13px">${n}</span>
-        <span style="font-weight:800;color:#2e7d32;font-size:13px">₹${(weeklyColTotals[n] ?? 0).toFixed(2)}</span>
-      </div>`,
-      )
-      .join("");
+    // Build footer row
+    const tfoot = `<tfoot><tr style="background:#1b5e20;color:white;-webkit-print-color-adjust:exact;print-color-adjust:exact">
+      <td style="border:1px solid #388e3c;padding:6px 10px;font-weight:800;white-space:nowrap">GRAND TOTAL</td>
+      <td colspan="${weeklyDateKeys.length}" style="border:1px solid #388e3c;padding:6px 8px;text-align:center;color:rgba(255,255,255,0.6);font-size:10px">${weeklyDateKeys.length} days</td>
+      <td style="border:1px solid #388e3c;padding:6px 10px;font-weight:800;text-align:right;white-space:nowrap">₹${weeklyGrandTotal.toFixed(2)}</td>
+    </tr></tfoot>`;
+
+    const tableHtml = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11px;min-width:${Math.max(400, 140 + weeklyDateKeys.length * 80)}px">
+      ${thead}<tbody>${tbodyRows}</tbody>${tfoot}
+    </table></div>`;
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>SAHA Weekly Lebour Report</title>
       <style>
-        @page { size: A4 portrait; margin: 1cm; }
+        @page { size: A4 landscape; margin: 1cm; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', Arial, sans-serif; color: #111827; }
-        @media print { body { background: white; } }
-        @media screen { body { padding: 20px; background: #f3f4f6; } .content { background: white; max-width: 210mm; margin: 0 auto; padding: 20px; } }
+        @media print { * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; } body { background: white; } }
+        @media screen { body { padding: 20px; background: #f3f4f6; } .content { background: white; max-width: 297mm; margin: 0 auto; padding: 20px; } }
       </style>
       </head><body>
       <div class="content">
         <h2 style="color:#1b5e20;margin-bottom:4px">SAHA – Weekly Lebour Report</h2>
-        <p style="color:#555;font-size:13px;margin-bottom:16px">${periodLabel} &nbsp;|&nbsp; ${weeklyDateRows.length} days &nbsp;|&nbsp; ${weeklyCompleteDeliveries.length} deliveries</p>
-        ${dateCardsHtml}
-        <div style="background:#2e7d32;color:#fff;padding:12px 20px;border-radius:10px;margin-top:8px;display:flex;justify-content:space-between;font-size:15px;font-weight:800;-webkit-print-color-adjust:exact;print-color-adjust:exact">
-          <span>Grand Total (Lebour)</span>
-          <span>${weeklyGrandTotal > 0 ? `₹${weeklyGrandTotal.toFixed(2)}` : "—"}</span>
-        </div>
-        <div style="border:1.5px solid #c8e6c9;border-radius:12px;overflow:hidden;margin-top:16px">
-          <div style="background:#1b5e20;color:#fff;padding:9px 14px;font-weight:800;font-size:13px;-webkit-print-color-adjust:exact;print-color-adjust:exact">Lebour Summary</div>
-          ${summaryRows}
-        </div>
+        <p style="color:#555;font-size:13px;margin-bottom:16px">${periodLabel} &nbsp;|&nbsp; ${weeklyDateKeys.length} days &nbsp;|&nbsp; ${weeklyLaborNames.length} lebours</p>
+        ${tableHtml}
         <p style="color:#aaa;font-size:11px;text-align:center;margin-top:24px">SAHA Business Suite</p>
       </div>
       </body></html>`;
@@ -528,7 +529,7 @@ export default function ReportPage({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const jsPDF = (window as any).jspdf?.jsPDF || (window as any).jsPDF;
     const doc = new jsPDF({
-      orientation: "portrait",
+      orientation: "landscape",
       unit: "mm",
       format: "a4",
     });
@@ -551,112 +552,173 @@ export default function ReportPage({
       margin,
       y,
     );
-    y += 4;
+    y += 5;
     doc.setDrawColor(22, 163, 74);
-    doc.setLineWidth(0.6);
+    doc.setLineWidth(0.5);
     doc.line(margin, y, pw - margin, y);
     y += 8;
 
-    for (const row of weeklyDateRows) {
-      const activeLabours = weeklyLaborNames.filter(
-        (n) => (row.laborAmts[n] ?? 0) > 0,
-      );
-      const dayTotal = activeLabours.reduce(
-        (s, n) => s + (row.laborAmts[n] ?? 0),
-        0,
-      );
-      const cardH = 10 + activeLabours.length * 8 + 10;
-      if (y + cardH > 270) {
+    // Build table data for autoTable if available
+    const colWidth = Math.min(
+      28,
+      (pw - margin * 2 - 40) / Math.max(weeklyDateKeys.length, 1),
+    );
+    const nameColW = 40;
+    const totalColW = 28;
+    const tableW = nameColW + weeklyDateKeys.length * colWidth + totalColW;
+    const startX = margin;
+
+    // Header row
+    const headerH = 8;
+    doc.setFillColor(27, 94, 32);
+    doc.rect(startX, y, tableW, headerH, "F");
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(255, 255, 255);
+    doc.text("Name", startX + 2, y + 5.5);
+    let cx = startX + nameColW;
+    for (const dk of weeklyDateKeys) {
+      const [, mm, dd] = dk.split("-");
+      doc.text(`${dd}/${mm}`, cx + colWidth / 2, y + 5.5, { align: "center" });
+      cx += colWidth;
+    }
+    doc.text("Total", startX + tableW - 2, y + 5.5, { align: "right" });
+    y += headerH;
+
+    // Draw borders for header
+    doc.setDrawColor(56, 142, 60);
+    doc.setLineWidth(0.3);
+    doc.rect(startX, y - headerH, tableW, headerH);
+    cx = startX + nameColW;
+    for (let i = 0; i < weeklyDateKeys.length; i++) {
+      doc.line(cx, y - headerH, cx, y);
+      cx += colWidth;
+    }
+    doc.line(cx, y - headerH, cx, y);
+
+    // Body rows
+    const rowH = 7;
+    for (let ri = 0; ri < weeklyLaborNames.length; ri++) {
+      if (y + rowH > 190) {
         doc.addPage();
         y = 20;
       }
-
-      // Date header (dark green)
-      doc.setFillColor(46, 125, 50);
-      doc.roundedRect(margin, y, pw - margin * 2, 9, 2, 2, "F");
-      doc.setFontSize(10);
+      const name = weeklyLaborNames[ri];
+      const bg = ri % 2 === 0 ? [255, 255, 255] : [249, 251, 231];
+      doc.setFillColor(bg[0], bg[1], bg[2]);
+      doc.rect(startX, y, tableW, rowH, "F");
       doc.setFont("helvetica", "bold");
-      doc.setTextColor(255, 255, 255);
-      doc.text(`${formatDisplayDate(row.date)}`, margin + 3, y + 6);
-      y += 9;
-
-      // Lebour rows
-      for (const name of activeLabours) {
-        const amt = row.laborAmts[name] ?? 0;
-        doc.setFillColor(255, 255, 255);
-        doc.rect(margin, y, pw - margin * 2, 7, "F");
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(27, 94, 32);
-        doc.text(name, margin + 3, y + 5);
-        doc.setFont("helvetica", "bold");
-        doc.text(`Rs.${amt.toFixed(2)}`, pw - margin - 3, y + 5, {
-          align: "right",
-        });
-        y += 7;
-      }
-
-      // Day Total row
-      doc.setFillColor(232, 245, 233);
-      doc.rect(margin, y, pw - margin * 2, 8, "F");
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
       doc.setTextColor(27, 94, 32);
-      doc.text("Day Total", margin + 3, y + 5.5);
-      doc.text(`Rs.${dayTotal.toFixed(2)}`, pw - margin - 3, y + 5.5, {
+      doc.text(name.substring(0, 18), startX + 2, y + 4.8);
+      cx = startX + nameColW;
+      for (const dk of weeklyDateKeys) {
+        const row = weeklyDateRows.find((r) => r.date === dk);
+        const amt = row?.laborAmts[name] ?? 0;
+        if (amt > 0) {
+          doc.setTextColor(46, 125, 50);
+          doc.setFont("helvetica", "bold");
+          doc.text(`₹${amt.toFixed(2)}`, cx + colWidth / 2, y + 4.8, {
+            align: "center",
+          });
+        } else {
+          doc.setTextColor(180, 180, 180);
+          doc.setFont("helvetica", "normal");
+          doc.text("NIL", cx + colWidth / 2, y + 4.8, { align: "center" });
+        }
+        cx += colWidth;
+      }
+      const total = weeklyColTotals[name] ?? 0;
+      doc.setFillColor(232, 245, 233);
+      doc.rect(cx, y, totalColW, rowH, "F");
+      doc.setTextColor(27, 94, 32);
+      doc.setFont("helvetica", "bold");
+      doc.text(`₹${total.toFixed(2)}`, startX + tableW - 2, y + 4.8, {
         align: "right",
       });
-      y += 10;
+      // borders
+      doc.setDrawColor(200, 230, 201);
+      doc.setLineWidth(0.2);
+      doc.rect(startX, y, tableW, rowH);
+      let bx = startX + nameColW;
+      for (let i = 0; i < weeklyDateKeys.length; i++) {
+        doc.line(bx, y, bx, y + rowH);
+        bx += colWidth;
+      }
+      doc.line(bx, y, bx, y + rowH);
+      y += rowH;
     }
 
-    // Grand Total banner
-    if (y + 12 > 270) {
-      doc.addPage();
-      y = 20;
-    }
-    doc.setFillColor(46, 125, 50);
-    doc.roundedRect(margin, y, pw - margin * 2, 10, 2, 2, "F");
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(255, 255, 255);
-    doc.text("Grand Total (Lebour)", margin + 3, y + 7);
-    doc.text(
-      weeklyGrandTotal > 0 ? `Rs.${weeklyGrandTotal.toFixed(2)}` : "0.00",
-      pw - margin - 3,
-      y + 7,
-      { align: "right" },
-    );
-    y += 14;
-
-    // Lebour Summary
-    if (y + 12 + weeklyLaborNames.length * 7 > 270) {
+    // Footer / Grand Total row
+    if (y + 9 > 190) {
       doc.addPage();
       y = 20;
     }
     doc.setFillColor(27, 94, 32);
-    doc.roundedRect(margin, y, pw - margin * 2, 9, 2, 2, "F");
-    doc.setFontSize(10);
+    doc.rect(startX, y, tableW, 9, "F");
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
     doc.setTextColor(255, 255, 255);
-    doc.text("Lebour Summary", margin + 3, y + 6);
-    y += 9;
-    for (const name of weeklyLaborNames) {
-      doc.setFillColor(255, 255, 255);
-      doc.rect(margin, y, pw - margin * 2, 7, "F");
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(27, 94, 32);
-      doc.text(name, margin + 3, y + 5);
-      doc.text(
-        `Rs.${(weeklyColTotals[name] ?? 0).toFixed(2)}`,
-        pw - margin - 3,
-        y + 5,
-        { align: "right" },
-      );
-      y += 7;
+    doc.text("GRAND TOTAL", startX + 2, y + 6);
+    cx = startX + nameColW;
+    for (const dk of weeklyDateKeys) {
+      const row = weeklyDateRows.find((r) => r.date === dk);
+      const dayTotal = row
+        ? Object.values(row.laborAmts).reduce((s, v) => s + v, 0)
+        : 0;
+      doc.text(`₹${dayTotal.toFixed(2)}`, cx + colWidth / 2, y + 6, {
+        align: "center",
+      });
+      cx += colWidth;
     }
+    doc.text(`₹${weeklyGrandTotal.toFixed(2)}`, startX + tableW - 2, y + 6, {
+      align: "right",
+    });
+    doc.setDrawColor(56, 142, 60);
+    doc.setLineWidth(0.3);
+    doc.rect(startX, y, tableW, 9);
 
     doc.save("saha-weekly-report.pdf");
+  }
+
+  async function handleShareWeeklyReport() {
+    const text = buildWeeklyShareText();
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "SAHA Weekly Lebour Report", text });
+      } catch {}
+    } else {
+      await navigator.clipboard.writeText(text).catch(() => {});
+      alert("Report copied to clipboard!");
+    }
+  }
+
+  function buildWeeklyShareText(): string {
+    const lines = ["SAHA Weekly Lebour Report"];
+    if (weeklyFrom && weeklyTo)
+      lines.push(
+        `${formatDisplayDate(weeklyFrom)} – ${formatDisplayDate(weeklyTo)}`,
+      );
+    lines.push("");
+    const header = [
+      "Name",
+      ...weeklyDateKeys.map((d) => formatDisplayDate(d)),
+      "Total",
+    ];
+    lines.push(header.join(" | "));
+    for (const name of weeklyLaborNames) {
+      const cells = [name];
+      for (const dateKey of weeklyDateKeys) {
+        const row = weeklyDateRows.find((r) => r.date === dateKey);
+        const amt = row?.laborAmts[name] ?? 0;
+        cells.push(amt > 0 ? `₹${amt.toFixed(2)}` : "NIL");
+      }
+      cells.push(`₹${(weeklyColTotals[name] ?? 0).toFixed(2)}`);
+      lines.push(cells.join(" | "));
+    }
+    lines.push("");
+    lines.push(`Grand Total: ₹${weeklyGrandTotal.toFixed(2)}`);
+    return lines.join("\n");
   }
 
   // Group daily deliveries by vehicle
@@ -746,6 +808,20 @@ export default function ReportPage({
             >
               <Printer size={13} />
               Print
+            </button>
+            <button
+              type="button"
+              data-ocid="report.weekly.share_button"
+              onClick={handleShareWeeklyReport}
+              className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-xs font-bold transition-colors"
+              style={{
+                background: "oklch(94% 0.04 145)",
+                color: "oklch(38% 0.14 145)",
+                border: "1.5px solid oklch(82% 0.08 145)",
+              }}
+            >
+              <Share2 size={13} />
+              Share
             </button>
             <button
               type="button"
@@ -1278,148 +1354,174 @@ export default function ReportPage({
                   </p>
                 </div>
 
-                {/* Vertical Date Cards */}
-                <div data-ocid="report.weekly.table" className="space-y-3">
-                  {weeklyDateRows.map((row, ri) => {
-                    const activeLabours = weeklyLaborNames.filter(
-                      (n) => (row.laborAmts[n] ?? 0) > 0,
-                    );
-                    const dayTotal = activeLabours.reduce(
-                      (s, n) => s + (row.laborAmts[n] ?? 0),
-                      0,
-                    );
-                    return (
-                      <div
-                        key={row.date}
-                        data-ocid={`report.weekly.date_card.${ri + 1}`}
-                        className="rounded-2xl overflow-hidden shadow-sm"
-                        style={{ border: "1.5px solid oklch(82% 0.1 145)" }}
-                      >
-                        {/* Date Header */}
-                        <div
-                          className="px-4 py-2.5 flex items-center gap-2"
-                          style={{ background: "oklch(35% 0.1 145)" }}
-                        >
-                          <Calendar
-                            size={13}
-                            className="text-white opacity-80"
-                          />
-                          <span className="text-sm font-extrabold text-white">
-                            {formatDisplayDate(row.date)}
-                          </span>
-                        </div>
-                        {/* Lebour rows */}
-                        <div
-                          className="bg-white divide-y"
-                          style={{ borderColor: "oklch(92% 0.05 145)" }}
-                        >
-                          {activeLabours.length === 0 ? (
-                            <p
-                              className="px-4 py-3 text-xs"
-                              style={{ color: "oklch(60% 0.06 145)" }}
-                            >
-                              No lebour records
-                            </p>
-                          ) : (
-                            activeLabours.map((name) => (
-                              <div
-                                key={name}
-                                className="flex items-center justify-between px-4 py-2.5"
-                              >
-                                <span
-                                  className="text-sm font-semibold"
-                                  style={{ color: "oklch(28% 0.1 145)" }}
-                                >
-                                  {name}
-                                </span>
-                                <span
-                                  className="text-sm font-bold"
-                                  style={{ color: "oklch(35% 0.16 145)" }}
-                                >
-                                  ₹{(row.laborAmts[name] ?? 0).toFixed(2)}
-                                </span>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                        {/* Day Total */}
-                        <div
-                          className="flex items-center justify-between px-4 py-2.5"
+                {/* Ledger Table */}
+                <div
+                  data-ocid="report.weekly.table"
+                  className="overflow-x-auto rounded-xl shadow-sm"
+                  style={{ border: "1.5px solid #c8e6c9" }}
+                >
+                  <table
+                    style={{
+                      borderCollapse: "collapse",
+                      width: "100%",
+                      minWidth: `${Math.max(400, 120 + weeklyDateKeys.length * 90)}px`,
+                      fontSize: "12px",
+                    }}
+                  >
+                    <thead>
+                      <tr>
+                        <th
                           style={{
-                            background: "oklch(93% 0.07 145)",
-                            borderTop: "1.5px solid oklch(82% 0.1 145)",
+                            background: "#1b5e20",
+                            color: "white",
+                            border: "1px solid #388e3c",
+                            padding: "8px 12px",
+                            textAlign: "left",
+                            whiteSpace: "nowrap",
+                            fontWeight: 800,
+                            position: "sticky",
+                            left: 0,
+                            zIndex: 2,
                           }}
                         >
-                          <span
-                            className="text-xs font-extrabold uppercase tracking-wide"
-                            style={{ color: "oklch(28% 0.1 145)" }}
-                          >
-                            Day Total
-                          </span>
-                          <span
-                            className="text-sm font-extrabold"
-                            style={{ color: "oklch(28% 0.12 145)" }}
-                          >
-                            ₹{dayTotal.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Grand Total Banner */}
-                <div
-                  className="flex items-center justify-between px-4 py-3 rounded-2xl"
-                  style={{ background: "oklch(35% 0.1 145)" }}
-                >
-                  <span className="text-sm font-extrabold text-white">
-                    Grand Total (Lebour)
-                  </span>
-                  <span className="text-lg font-extrabold text-white">
-                    {weeklyGrandTotal > 0
-                      ? `₹${weeklyGrandTotal.toFixed(2)}`
-                      : "—"}
-                  </span>
-                </div>
-
-                {/* Lebour Summary */}
-                <div
-                  className="rounded-2xl overflow-hidden shadow-sm"
-                  style={{ border: "1.5px solid oklch(82% 0.1 145)" }}
-                >
-                  <div
-                    className="px-4 py-2.5"
-                    style={{ background: "oklch(28% 0.1 145)" }}
-                  >
-                    <span className="text-sm font-extrabold text-white">
-                      Lebour Summary
-                    </span>
-                  </div>
-                  <div
-                    className="bg-white divide-y"
-                    style={{ borderColor: "oklch(92% 0.05 145)" }}
-                  >
-                    {weeklyLaborNames.map((name) => (
-                      <div
-                        key={name}
-                        className="flex items-center justify-between px-4 py-2.5"
-                      >
-                        <span
-                          className="text-sm font-bold"
-                          style={{ color: "oklch(28% 0.1 145)" }}
+                          Name
+                        </th>
+                        {weeklyDateKeys.map((dk) => {
+                          const [yyyy, mm, dd] = dk.split("-");
+                          return (
+                            <th
+                              key={dk}
+                              style={{
+                                background: "#1b5e20",
+                                color: "white",
+                                border: "1px solid #388e3c",
+                                padding: "8px 10px",
+                                textAlign: "center",
+                                whiteSpace: "nowrap",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {dd}/{mm}/{yyyy.slice(2)}
+                            </th>
+                          );
+                        })}
+                        <th
+                          style={{
+                            background: "#2e7d32",
+                            color: "white",
+                            border: "1px solid #388e3c",
+                            padding: "8px 12px",
+                            textAlign: "right",
+                            whiteSpace: "nowrap",
+                            fontWeight: 800,
+                          }}
                         >
-                          {name}
-                        </span>
-                        <span
-                          className="text-sm font-extrabold"
-                          style={{ color: "oklch(35% 0.16 145)" }}
+                          Total
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {weeklyLaborNames.map((name, ri) => (
+                        <tr
+                          key={name}
+                          style={{
+                            background: ri % 2 === 0 ? "white" : "#f9fbe7",
+                          }}
                         >
-                          ₹{(weeklyColTotals[name] ?? 0).toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                          <td
+                            style={{
+                              border: "1px solid #c8e6c9",
+                              padding: "7px 12px",
+                              fontWeight: 700,
+                              whiteSpace: "nowrap",
+                              color: "#1b5e20",
+                              position: "sticky",
+                              left: 0,
+                              background: ri % 2 === 0 ? "white" : "#f9fbe7",
+                              zIndex: 1,
+                            }}
+                          >
+                            {name}
+                          </td>
+                          {weeklyDateKeys.map((dk) => {
+                            const row = weeklyDateRows.find(
+                              (r) => r.date === dk,
+                            );
+                            const amt = row?.laborAmts[name] ?? 0;
+                            return (
+                              <td
+                                key={dk}
+                                style={{
+                                  border: "1px solid #c8e6c9",
+                                  padding: "7px 10px",
+                                  textAlign: "center",
+                                  color: amt > 0 ? "#2e7d32" : "#bbb",
+                                  fontWeight: amt > 0 ? 600 : 400,
+                                }}
+                              >
+                                {amt > 0 ? `₹${amt.toFixed(2)}` : "NIL"}
+                              </td>
+                            );
+                          })}
+                          <td
+                            style={{
+                              border: "1px solid #c8e6c9",
+                              padding: "7px 12px",
+                              background: "#e8f5e9",
+                              fontWeight: 800,
+                              textAlign: "right",
+                              color: "#1b5e20",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            ₹{(weeklyColTotals[name] ?? 0).toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr style={{ background: "#1b5e20", color: "white" }}>
+                        <td
+                          style={{
+                            border: "1px solid #388e3c",
+                            padding: "8px 12px",
+                            fontWeight: 800,
+                            whiteSpace: "nowrap",
+                            position: "sticky",
+                            left: 0,
+                            background: "#1b5e20",
+                            zIndex: 1,
+                          }}
+                        >
+                          GRAND TOTAL
+                        </td>
+                        <td
+                          colSpan={weeklyDateKeys.length}
+                          style={{
+                            border: "1px solid #388e3c",
+                            padding: "8px 10px",
+                            textAlign: "center",
+                            color: "rgba(255,255,255,0.6)",
+                            fontSize: "11px",
+                          }}
+                        >
+                          {weeklyDateKeys.length} days
+                        </td>
+                        <td
+                          style={{
+                            border: "1px solid #388e3c",
+                            padding: "8px 12px",
+                            fontWeight: 800,
+                            textAlign: "right",
+                            color: "white",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          ₹{weeklyGrandTotal.toFixed(2)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
                 </div>
 
                 {/* Stat strip */}

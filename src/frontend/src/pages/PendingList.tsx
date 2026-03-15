@@ -33,88 +33,238 @@ interface Props {
 }
 
 function buildPendingHtml(deliveries: PendingDelivery[]): string {
-  const cards = deliveries
-    .map((d, idx) => {
-      const bg = idx % 2 === 0 ? "#ffffff" : "#f0fdf4";
-      const locationColor = d.locationType === "Local" ? "#166534" : "#92400e";
-      const locationBg = d.locationType === "Local" ? "#dcfce7" : "#fef3c7";
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, "0");
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const yyyy = now.getFullYear();
+  const currentDate = `${dd}/${mm}/${yyyy}`;
 
-      const phoneRow = d.phoneNumber
-        ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-            <span style="font-size:12px">☎️</span>
-            <span style="font-size:12px;color:#374151">${d.phoneNumber}</span>
+  const CARDS_PER_PAGE = 14;
+  const totalPages = Math.max(1, Math.ceil(deliveries.length / CARDS_PER_PAGE));
+
+  function buildHeaderHtml(pageNum: number): string {
+    return `
+      <div class="page-header header" style="
+        background:#166534;
+        -webkit-print-color-adjust:exact;
+        print-color-adjust:exact;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        padding:10px 16px;
+        margin-bottom:8px;
+        border-radius:6px;
+      ">
+        <div style="display:flex;flex-direction:column;">
+          <span style="font-size:18px;font-weight:900;color:#ffffff;letter-spacing:-0.3px;line-height:1.1;">SAHA</span>
+          <span style="font-size:10px;font-weight:500;color:#86efac;margin-top:1px;letter-spacing:0.3px;">Pending Delivery List</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="
+            background:#14532d;
+            -webkit-print-color-adjust:exact;
+            print-color-adjust:exact;
+            color:#ffffff;
+            font-size:9px;
+            font-weight:700;
+            padding:3px 9px;
+            border-radius:999px;
+          ">Total Pending: ${deliveries.length}</span>
+          <span style="font-size:9px;color:#bbf7d0;font-weight:500;">${currentDate}</span>
+          <span style="font-size:9px;color:#bbf7d0;font-weight:500;">Page ${pageNum} of ${totalPages}</span>
+        </div>
+      </div>
+      <div style="height:1px;background:#d1fae5;margin-bottom:6px;"></div>
+    `;
+  }
+
+  function buildCardHtml(d: PendingDelivery, serial: number): string {
+    const locationColor = d.locationType === "Local" ? "#166534" : "#92400e";
+    const locationBg = d.locationType === "Local" ? "#dcfce7" : "#fef3c7";
+
+    const bricksText =
+      d.bricks && d.bricks.length > 0
+        ? d.bricks.map((b) => `${b.type} - ${b.quantity}`).join(", ")
+        : `${d.totalBricks} bricks`;
+
+    const invoiceHtml = d.invoiceNumber
+      ? `<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">
+          <span style="font-size:8px;font-weight:800;color:#7c3aed;background:#ede9fe;padding:1px 5px;border-radius:3px;">INV#</span>
+          <span style="font-size:9px;color:#4c1d95;font-weight:600;">${d.invoiceNumber}</span>
+        </div>`
+      : "";
+
+    const phoneHtml = d.phoneNumber
+      ? `<div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;">
+          <span style="font-size:9px;">📞</span>
+          <span style="font-size:9px;color:#374151;">${d.phoneNumber}</span>
+        </div>`
+      : "";
+
+    const dueHtml =
+      d.dueAmount !== undefined && d.dueAmount > 0
+        ? `<div style="margin-top:4px;">
+            <span style="font-size:11px;font-weight:800;color:#c2410c;">Due: ৳${d.dueAmount.toLocaleString()}</span>
           </div>`
         : "";
 
-      const invoiceRow = d.invoiceNumber
-        ? `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-            <span style="font-size:11px;font-weight:700;color:#6b21a8">INV#</span>
-            <span style="font-size:12px;color:#374151">${d.invoiceNumber}</span>
-          </div>`
-        : "";
+    return `
+      <div class="pending-card" style="
+        background:#f0fdf4;
+        -webkit-print-color-adjust:exact;
+        print-color-adjust:exact;
+        border:1px solid #bbf7d0;
+        border-radius:8px;
+        padding:7px 10px;
+        margin-bottom:4px;
+        page-break-inside:avoid;
+        display:flex;
+        align-items:stretch;
+        gap:8px;
+      ">
+        <!-- Serial number -->
+        <div style="display:flex;align-items:flex-start;padding-top:1px;flex-shrink:0;">
+          <span style="font-size:8px;color:#9ca3af;font-weight:600;width:14px;">#${serial}</span>
+        </div>
+        <!-- Left content -->
+        <div style="flex:1;min-width:0;">
+          <!-- Row 1: Name + Date -->
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:3px;">
+            <span style="font-size:12px;font-weight:800;color:#14532d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%;">${d.customerName}</span>
+            <span style="font-size:9px;color:#6b7280;flex-shrink:0;">${d.date}</span>
+          </div>
+          <!-- Row 2: Invoice -->
+          ${invoiceHtml}
+          <!-- Row 3: Address -->
+          <div style="display:flex;align-items:flex-start;gap:4px;margin-bottom:3px;">
+            <span style="font-size:9px;flex-shrink:0;">📍</span>
+            <span style="font-size:9px;color:#374151;line-height:1.3;">${d.address}</span>
+          </div>
+          <!-- Row 4: Phone -->
+          ${phoneHtml}
+          <!-- Row 5: Bricks -->
+          <div style="display:flex;align-items:center;gap:4px;">
+            <span style="font-size:9px;">🧱</span>
+            <span style="font-size:9px;font-weight:700;color:#166534;">${bricksText}</span>
+          </div>
+        </div>
+        <!-- Right column -->
+        <div style="flex-shrink:0;width:68px;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;">
+          <span style="
+            background:${locationBg};
+            -webkit-print-color-adjust:exact;
+            print-color-adjust:exact;
+            color:${locationColor};
+            font-size:8px;
+            font-weight:700;
+            padding:2px 7px;
+            border-radius:999px;
+            white-space:nowrap;
+          ">${d.locationType}</span>
+          ${dueHtml}
+        </div>
+      </div>
+    `;
+  }
 
-      const dueHtml =
-        d.dueAmount !== undefined && d.dueAmount > 0
-          ? `<span style="font-size:12px;font-weight:700;color:#b45309">Due: ৳${d.dueAmount.toLocaleString()}</span>`
-          : "";
+  function buildPageHtml(
+    pageCards: PendingDelivery[],
+    pageNum: number,
+    startSerial: number,
+  ): string {
+    const cardsHtml = pageCards
+      .map((d, i) => buildCardHtml(d, startSerial + i))
+      .join("");
+    return `
+      <div class="page-wrapper" style="width:186mm;padding:10mm 12mm;box-sizing:border-box;">
+        ${buildHeaderHtml(pageNum)}
+        <div class="cards-container pending-container">
+          ${cardsHtml}
+        </div>
+        <div style="margin-top:6px;text-align:center;">
+          <span style="font-size:8px;color:#d1d5db;">SAHA Business Suite &middot; Confidential</span>
+        </div>
+      </div>
+    `;
+  }
 
-      return `
-        <div style="background:${bg};border:1.5px solid #d1fae5;border-radius:12px;padding:14px 16px;margin-bottom:12px;page-break-inside:avoid">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">
-            <div style="display:flex;align-items:center;gap:8px">
-              <div style="width:32px;height:32px;background:#dcfce7;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                <span style="font-size:15px">👤</span>
-              </div>
-              <div>
-                <div style="font-size:14px;font-weight:800;color:#14532d">${d.customerName}</div>
-                <div style="font-size:11px;color:#6b7280;margin-top:1px">${d.date}</div>
-              </div>
-            </div>
-            <span style="background:${locationBg};color:${locationColor};border-radius:999px;padding:2px 10px;font-size:10px;font-weight:700;flex-shrink:0">${d.locationType}</span>
-          </div>
-          ${invoiceRow}
-          <div style="display:flex;align-items:flex-start;gap:6px;margin-top:8px;margin-bottom:6px">
-            <span style="font-size:12px;margin-top:1px">📍</span>
-            <span style="font-size:12px;color:#374151;line-height:1.4">${d.address}</span>
-          </div>
-          ${phoneRow}
-          <div style="display:flex;align-items:center;justify-content:space-between;padding-top:8px;margin-top:4px;border-top:1px solid #d1fae5">
-            <div style="display:flex;align-items:center;gap:6px">
-              <span style="font-size:12px">🧱</span>
-              <span style="font-size:12px;font-weight:700;color:#166534">${d.totalBricks} bricks</span>
-            </div>
-            ${dueHtml}
-          </div>
-        </div>`;
-    })
-    .join("");
+  let pagesHtml = "";
+  if (deliveries.length === 0) {
+    pagesHtml = `
+      <div style="width:186mm;padding:10mm 12mm;box-sizing:border-box;">
+        ${buildHeaderHtml(1)}
+        <div style="text-align:center;padding:30px 0;color:#9ca3af;font-size:11px;">No pending deliveries</div>
+        <div style="text-align:center;margin-top:6px;">
+          <span style="font-size:8px;color:#d1d5db;">SAHA Business Suite &middot; Confidential</span>
+        </div>
+      </div>
+    `;
+  } else {
+    for (let p = 0; p < totalPages; p++) {
+      const slice = deliveries.slice(
+        p * CARDS_PER_PAGE,
+        (p + 1) * CARDS_PER_PAGE,
+      );
+      const startSerial = p * CARDS_PER_PAGE + 1;
+      if (p > 0) {
+        pagesHtml += `<div style="page-break-before:always;"></div>`;
+      }
+      pagesHtml += buildPageHtml(slice, p + 1, startSerial);
+    }
+  }
 
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>SAHA Pending List</title>
+  <title>SAHA - Pending Delivery List</title>
   <style>
-    @page { size: A4 portrait; margin: 1.5cm 1cm; }
+    @page { size: A4 portrait; margin: 10mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; color: #111827; width: 210mm; max-width: 210mm; }
-    @media print { body { background: white; } .page-break { page-break-before: always; } }
-    @media screen { body { padding: 20px; background: #f3f4f6; } .content { background: white; max-width: 210mm; margin: 0 auto; padding: 20px; } }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: #111827;
+      background: #f9fafb;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    @media print {
+      @page {
+        size: A4;
+        margin: 10mm;
+      }
+      body { background: white; margin: 0; }
+      .no-print { display: none !important; }
+      .page-wrapper { page-break-after: auto; }
+      .header {
+        margin-bottom: 10px;
+        page-break-after: avoid;
+      }
+      .pending-container {
+        display: flex;
+        flex-direction: column;
+      }
+      .pending-card {
+        height: 70px;
+        padding: 6px 10px;
+        margin-bottom: 6px;
+        page-break-inside: avoid;
+      }
+    }
+    @media screen {
+      body { padding: 20px; }
+      .page-wrapper {
+        background: white;
+        max-width: 210mm;
+        margin: 0 auto 24px;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.10);
+        border-radius: 8px;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="content">
-    <div style="margin-bottom:20px">
-      <h1 style="font-size:20px;font-weight:900;color:#14532d;letter-spacing:-0.5px">SAHA</h1>
-      <h2 style="font-size:15px;font-weight:700;color:#166534;margin-top:2px">Pending Delivery List</h2>
-      <p style="font-size:12px;color:#6b7280;margin-top:6px">Total Pending: <strong>${deliveries.length}</strong></p>
-      <div style="height:2px;background:linear-gradient(to right,#16a34a,#86efac);border-radius:99px;margin-top:10px"></div>
-    </div>
-    ${cards || "<p style='color:#9ca3af;text-align:center;padding:40px 0'>No pending deliveries</p>"}
-    <div style="text-align:center;margin-top:24px;padding-top:16px;border-top:1px solid #e5e7eb">
-      <p style="font-size:11px;color:#9ca3af">SAHA Business Suite</p>
-    </div>
-  </div>
+  ${pagesHtml}
 </body>
 </html>`;
 }
@@ -295,7 +445,11 @@ export default function PendingList({
       // Bricks + Due
       doc.setFont("helvetica", "bold");
       doc.setTextColor(22, 101, 52);
-      doc.text(`Bricks: ${d.totalBricks}`, margin + 3, lineY);
+      doc.text(
+        `Bricks: ${d.bricks && d.bricks.length > 0 ? d.bricks.map((b) => `${b.type}: ${b.quantity}`).join(", ") : d.totalBricks}`,
+        margin + 3,
+        lineY,
+      );
       if (d.dueAmount !== undefined && d.dueAmount > 0) {
         doc.setTextColor(180, 83, 9);
         doc.text(
@@ -398,13 +552,13 @@ export default function PendingList({
       </header>
 
       {/* List */}
-      <main className="flex-1 px-4 py-5 pb-16 space-y-3">
+      <main className="flex-1 px-4 py-5 pb-16 flex flex-col gap-3">
         {deliveries.length === 0 ? (
           <motion.div
             data-ocid="pending-list.empty_state"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center py-20 gap-4"
+            className="col-span-2 flex flex-col items-center justify-center py-20 gap-4"
           >
             <div
               className="h-20 w-20 rounded-3xl flex items-center justify-center"
@@ -435,7 +589,7 @@ export default function PendingList({
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.06 }}
-              className="rounded-2xl bg-white p-4 shadow-card"
+              className="rounded-2xl bg-white p-3 shadow-card"
               style={{ border: "1.5px solid oklch(90% 0.05 145)" }}
             >
               {/* Top row */}
@@ -544,7 +698,11 @@ export default function PendingList({
                     className="text-xs font-bold"
                     style={{ color: "oklch(38% 0.1 145)" }}
                   >
-                    {d.totalBricks} bricks
+                    {d.bricks && d.bricks.length > 0
+                      ? d.bricks
+                          .map((b) => `${b.type} - ${b.quantity}`)
+                          .join(", ")
+                      : `${d.totalBricks} bricks`}
                   </span>
                 </div>
                 {d.dueAmount !== undefined && (
@@ -558,7 +716,7 @@ export default function PendingList({
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-2 pt-3">
+              <div className="flex flex-col gap-1.5 pt-3">
                 <button
                   type="button"
                   data-ocid={`pending-list.edit_button.${idx + 1}`}
@@ -815,7 +973,11 @@ export default function PendingList({
                           editDelivery.locationType === lt
                             ? "white"
                             : "oklch(45% 0.1 145)",
-                        border: `1.5px solid ${editDelivery.locationType === lt ? "oklch(42% 0.18 145)" : "oklch(85% 0.07 145)"}`,
+                        border: `1.5px solid ${
+                          editDelivery.locationType === lt
+                            ? "oklch(42% 0.18 145)"
+                            : "oklch(85% 0.07 145)"
+                        }`,
                       }}
                     >
                       {lt}

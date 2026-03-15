@@ -22,24 +22,47 @@ function todayString() {
   return new Date().toISOString().split("T")[0];
 }
 
+function bricksToRecord(bricks?: BrickSelection[]): Record<string, number> {
+  if (!bricks) return {};
+  const result: Record<string, number> = {};
+  for (const b of bricks) {
+    result[b.type] = b.quantity;
+  }
+  return result;
+}
+
 interface Props {
   onSave: (delivery: PendingDelivery) => void;
   onBack: () => void;
+  editData?: PendingDelivery;
 }
 
-export default function AddPendingDelivery({ onSave, onBack }: Props) {
-  const [date, setDate] = useState(todayString());
-  const [customerName, setCustomerName] = useState("");
-  const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [address, setAddress] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [dueAmount, setDueAmount] = useState("");
-  const [selectedBricks, setSelectedBricks] = useState<Record<string, number>>(
-    {},
+export default function AddPendingDelivery({
+  onSave,
+  onBack,
+  editData,
+}: Props) {
+  const isEditing = !!editData;
+  const [date, setDate] = useState(editData?.date ?? todayString());
+  const [customerName, setCustomerName] = useState(
+    editData?.customerName ?? "",
   );
-  const [safetyQuantity, setSafetyQuantity] = useState("");
+  const [invoiceNumber, setInvoiceNumber] = useState(
+    editData?.invoiceNumber ?? "",
+  );
+  const [address, setAddress] = useState(editData?.address ?? "");
+  const [phoneNumber, setPhoneNumber] = useState(editData?.phoneNumber ?? "");
+  const [dueAmount, setDueAmount] = useState(
+    editData?.dueAmount?.toString() ?? "",
+  );
+  const [selectedBricks, setSelectedBricks] = useState<Record<string, number>>(
+    bricksToRecord(editData?.bricks),
+  );
+  const [safetyQuantity, setSafetyQuantity] = useState(
+    editData?.safetyQuantity?.toString() ?? "",
+  );
   const [locationType, setLocationType] = useState<"Local" | "Outside" | null>(
-    null,
+    editData?.locationType ?? null,
   );
   const [error, setError] = useState("");
 
@@ -82,7 +105,7 @@ export default function AddPendingDelivery({ onSave, onBack }: Props) {
     );
 
     const delivery: PendingDelivery = {
-      id: `${Date.now()}`,
+      id: isEditing ? editData.id : `${Date.now()}`,
       date,
       customerName: customerName.trim(),
       invoiceNumber: invoiceNumber.trim() || undefined,
@@ -125,13 +148,15 @@ export default function AddPendingDelivery({ onSave, onBack }: Props) {
             className="text-lg font-extrabold font-display leading-tight"
             style={{ color: "oklch(28% 0.06 145)" }}
           >
-            Add Pending Delivery
+            {isEditing ? "Edit Pending Delivery" : "Add Pending Delivery"}
           </h2>
           <p
             className="text-[11px] font-medium"
             style={{ color: "oklch(58% 0.08 145)" }}
           >
-            New Pending Delivery
+            {isEditing
+              ? "Update existing pending delivery"
+              : "New Pending Delivery"}
           </p>
         </div>
       </header>
@@ -477,7 +502,7 @@ export default function AddPendingDelivery({ onSave, onBack }: Props) {
             boxShadow: "0 6px 20px oklch(50% 0.18 145 / 0.35)",
           }}
         >
-          Save
+          {isEditing ? "Update" : "Save"}
         </Button>
       </div>
     </div>
